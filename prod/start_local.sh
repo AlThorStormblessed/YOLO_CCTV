@@ -144,7 +144,7 @@ start_service "stream_processor" "prod.stream_processor.stream_processor" "--url
 start_service "face_detection" "prod.face_detection.face_detection" "--model $MODEL_PATH --workers 2"
 start_service "face_recognition" "prod.face_recognition.face_recognition" "--workers 2 --threshold 0.7"
 start_service "result_aggregator" "prod.result_aggregator.result_aggregator" "--workers 2 --ttl 3600"
-start_service "web_interface" "prod.web_interface" ""
+start_service "web_interface" "prod.web_interface.app" ""
 
 echo "✅ All services launched. Logs: $LOG_DIR"
 echo "🌐 Web UI: http://localhost:5000"
