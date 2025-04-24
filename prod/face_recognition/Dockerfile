@@ -12,15 +12,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies without dlib/face_recognition
+# Install NumPy first to ensure proper version compatibility
 RUN pip install --no-cache-dir numpy==1.24.3
-RUN pip install --no-cache-dir opencv-python==4.8.0.76
+
+# Install OpenCV with matching NumPy version
+RUN pip install --no-cache-dir opencv-python==4.7.0.72
+
+# Install other dependencies
 RUN pip install --no-cache-dir scikit-learn==1.2.2
 RUN pip install --no-cache-dir redis==4.6.0
 RUN pip install --no-cache-dir pydantic==2.5.0
 
 # Install deepface which provides alternative face recognition methods
-RUN pip install --no-cache-dir deepface==0.0.79
+# Use --no-deps to avoid incompatible dependencies
+RUN pip install --no-cache-dir --no-deps deepface==0.0.79
+RUN pip install --no-cache-dir gdown==4.7.3 tqdm==4.66.1 retina-face==0.0.13
 
 # Create directory structure
 RUN mkdir -p /app/prod/face_recognition

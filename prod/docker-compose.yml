@@ -63,7 +63,7 @@ services:
         "${RTSP_URLS:-rtsp://example.com/stream1}",
       ]
 
-  # Face Detection service
+  # Face Detection service - using our pre-built image
   face_detection:
     build:
       context: ..
@@ -73,44 +73,10 @@ services:
       - redis
     environment:
       - REDIS_HOST=redis
-      - MODEL_PATH=/app/prod/face_detection/model/best.pt
+      - MODEL_PATH=/app/model/best.pt
     restart: unless-stopped
     networks:
       - face_recognition_network
-    command:
-      [
-        "python",
-        "-m",
-        "prod.face_detection.face_detection",
-        "--workers",
-        "2",
-        "--model",
-        "/app/prod/face_detection/model/best.pt",
-      ]
-
-  # Face Recognition service
-  face_recognition:
-    build:
-      context: ..
-      dockerfile: prod/face_recognition/Dockerfile
-    container_name: face_recognition_recognition
-    depends_on:
-      - redis
-    environment:
-      - REDIS_HOST=redis
-    restart: unless-stopped
-    networks:
-      - face_recognition_network
-    command:
-      [
-        "python",
-        "-m",
-        "prod.face_recognition.face_recognition",
-        "--workers",
-        "2",
-        "--threshold",
-        "0.7",
-      ]
 
   # Result Aggregator service
   result_aggregator:
