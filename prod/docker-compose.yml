@@ -114,3 +114,4 @@ volumes:
 networks:
   face_recognition_network:
     driver: bridge
+ 

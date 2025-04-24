@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f5f5f5;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        .badge {
+            font-size: 0.9rem;
+        }
+        .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .detection-item {
+            border-left: 4px solid #007bff;
+            padding-left: 10px;
+            margin-bottom: 10px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding: 15px 0;
+            color: #6c757d;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4 text-center">Face Recognition System Dashboard</h1>
+        
+        <div class="row">
+            <!-- System Status Card -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">System Status</div>
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            Status: <span id="system-status" class="badge bg-success">Running</span>
+                        </h5>
+                        <div id="last-update"></div>
+                        <hr>
+                        <h6>Queue Status:</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Frames Queue
+                                <span id="frames-queue" class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Faces Queue
+                                <span id="faces-queue" class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Recognition Queue
+                                <span id="recognition-queue" class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Active Streams Card -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Active Streams</div>
+                    <div class="card-body">
+                        <ul id="streams-list" class="list-group">
+                            <li class="list-group-item text-center text-muted">No active streams</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detection Statistics Card -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Detection Statistics</div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Total Detections:</span>
+                            <span id="total-detections" class="badge bg-secondary">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Known Faces:</span>
+                            <span id="known-faces" class="badge bg-info">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Detections Card -->
+        <div class="card mt-4">
+            <div class="card-header">Recent Detections</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Stream</th>
+                                <th>Face ID</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detections-table">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No detections yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Face Recognition System - <span id="current-time"></span></p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Format timestamp
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+        
+        // Update system stats
+        function updateStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Update system status
+                    document.getElementById('system-status').textContent = data.status;
+                    document.getElementById('last-update').textContent = 'Last updated: ' + formatTimestamp(data.timestamp);
+                    
+                    // Update queue lengths
+                    document.getElementById('frames-queue').textContent = data.queues.frames;
+                    document.getElementById('faces-queue').textContent = data.queues.faces;
+                    document.getElementById('recognition-queue').textContent = data.queues.recognition;
+                    
+                    // Update detection counts
+                    document.getElementById('total-detections').textContent = data.results_count;
+                    
+                    // Update streams list
+                    const streamsList = document.getElementById('streams-list');
+                    streamsList.innerHTML = '';
+                    
+                    if (data.streams && data.streams.length > 0) {
+                        data.streams.forEach(stream => {
+                            const streamItem = document.createElement('li');
+                            streamItem.className = 'list-group-item';
+                            streamItem.textContent = stream;
+                            streamsList.appendChild(streamItem);
+                        });
+                    } else {
+                        streamsList.innerHTML = '<li class="list-group-item text-center text-muted">No active streams</li>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching stats:', error);
+                    document.getElementById('system-status').textContent = 'Error';
+                    document.getElementById('system-status').className = 'badge bg-danger';
+                });
+        }
+        
+        // Update detection results
+        function updateResults() {
+            fetch('/api/results')
+                .then(response => response.json())
+                .then(data => {
+                    const detectionsTable = document.getElementById('detections-table');
+                    
+                    // Clear the table
+                    detectionsTable.innerHTML = '';
+                    
+                    // Update known faces count
+                    const knownCount = data.results.filter(r => r.face_id !== 'unknown').length;
+                    document.getElementById('known-faces').textContent = knownCount;
+                    
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(result => {
+                            const row = document.createElement('tr');
+                            
+                            // Time column
+                            const timeCell = document.createElement('td');
+                            timeCell.textContent = formatTimestamp(result.timestamp * 1000); // Convert to milliseconds
+                            row.appendChild(timeCell);
+                            
+                            // Stream column
+                            const streamCell = document.createElement('td');
+                            streamCell.textContent = result.stream_id;
+                            row.appendChild(streamCell);
+                            
+                            // Face ID column
+                            const faceIdCell = document.createElement('td');
+                            if (result.face_id === 'unknown') {
+                                faceIdCell.innerHTML = '<span class="badge bg-secondary">Unknown</span>';
+                            } else {
+                                faceIdCell.innerHTML = '<span class="badge bg-success">' + result.face_id + '</span>';
+                            }
+                            row.appendChild(faceIdCell);
+                            
+                            // Confidence column
+                            const confidenceCell = document.createElement('td');
+                            const confidence = (result.confidence * 100).toFixed(1);
+                            confidenceCell.textContent = confidence + '%';
+                            row.appendChild(confidenceCell);
+                            
+                            detectionsTable.appendChild(row);
+                        });
+                    } else {
+                        detectionsTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No detections yet</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching results:', error);
+                });
+        }
+        
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString();
+        }
+        
+        // Initial updates
+        updateStats();
+        updateResults();
+        updateCurrentTime();
+        
+        // Schedule periodic updates
+        setInterval(updateStats, 5000);  // Update every 5 seconds
+        setInterval(updateResults, 5000); // Update every 5 seconds
+        setInterval(updateCurrentTime, 1000); // Update every second
+    </script>
+</body>
+</html> 
