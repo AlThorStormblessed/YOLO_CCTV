@@ -9,12 +9,27 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Starting cleanup and redeployment process...${NC}"
 
-# Navigate to the project directory if not already there
-cd "$(dirname "$0")/.." || exit 1
+# Determine if we're in the prod directory or project root
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+if [[ $SCRIPT_DIR == */prod ]]; then
+    # We're in the prod directory
+    PROD_DIR="$SCRIPT_DIR"
+    PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
+else
+    # We're in the project root
+    PROD_DIR="$SCRIPT_DIR/prod"
+    PROJECT_ROOT="$SCRIPT_DIR"
+fi
+
+# Navigate to the project root
+cd "$PROJECT_ROOT" || exit 1
+
+echo -e "${YELLOW}Working from directory: ${PROJECT_ROOT}${NC}"
+echo -e "${YELLOW}Using prod directory: ${PROD_DIR}${NC}"
 
 # Stop all running containers
 echo -e "${YELLOW}Stopping all running containers...${NC}"
-docker-compose -f prod/docker-compose.yml down
+docker-compose -f "$PROD_DIR/docker-compose.yml" down
 
 # Remove old face recognition containers
 echo -e "${YELLOW}Removing old face recognition containers...${NC}"
@@ -39,15 +54,15 @@ docker images | grep 'facerecognition' | awk '{print $3}' | xargs -r docker rmi
 
 # Build new images
 echo -e "${YELLOW}Building new images...${NC}"
-./prod/build_and_push.sh ${1:-"yourusername"}
+"$PROD_DIR/build_and_push.sh" ${1:-"yourusername"}
 
 # Restart the services
 echo -e "${YELLOW}Starting services...${NC}"
-docker-compose -f prod/docker-compose.yml up -d
+docker-compose -f "$PROD_DIR/docker-compose.yml" up -d
 
 # Check if the services are running
 echo -e "${YELLOW}Checking service status...${NC}"
-docker-compose -f prod/docker-compose.yml ps
+docker-compose -f "$PROD_DIR/docker-compose.yml" ps
 
 echo -e "${GREEN}Deployment completed successfully!${NC}"
-echo -e "${YELLOW}View logs with: docker-compose -f prod/docker-compose.yml logs -f${NC}" 
+echo -e "${YELLOW}View logs with: docker-compose -f $PROD_DIR/docker-compose.yml logs -f${NC}" 

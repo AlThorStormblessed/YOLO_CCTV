@@ -8,6 +8,21 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Determine if we're in the prod directory or project root
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+if [[ $SCRIPT_DIR == */prod ]]; then
+    # We're in the prod directory
+    PROD_DIR="$SCRIPT_DIR"
+    PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
+else
+    # We're in the project root
+    PROD_DIR="$SCRIPT_DIR/prod"
+    PROJECT_ROOT="$SCRIPT_DIR"
+fi
+
+# Navigate to the project root
+cd "$PROJECT_ROOT" || exit 1
+
 # Queue names
 FRAMES_QUEUE="frames_queue"
 FACES_QUEUE="faces_queue"
@@ -58,9 +73,9 @@ elif [ "$total_items" -lt 50 ]; then
 else
     echo -e "${RED}Large queue backlog ($total_items items). System may be overwhelmed.${NC}"
     echo -e "${YELLOW}Consider scaling up services with:${NC}"
-    echo -e "${YELLOW}docker-compose -f prod/docker-compose.yml up -d --scale face_detection=3 --scale face_recognition=3${NC}"
+    echo -e "${YELLOW}docker-compose -f $PROD_DIR/docker-compose.yml up -d --scale face_detection=3 --scale face_recognition=3${NC}"
 fi
 
 # Get container resource usage
 echo -e "\n${YELLOW}Container resource usage:${NC}"
-docker stats --no-stream $(docker-compose -f prod/docker-compose.yml ps -q) | grep -v "CONTAINER ID" 
+docker stats --no-stream $(docker-compose -f "$PROD_DIR/docker-compose.yml" ps -q) | grep -v "CONTAINER ID" 

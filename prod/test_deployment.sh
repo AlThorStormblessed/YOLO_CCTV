@@ -13,8 +13,20 @@ DOCKER_USERNAME=${2:-"yourusername"}
 
 echo -e "${YELLOW}Testing production deployment with RTSP URL: ${RTSP_URL}${NC}"
 
-# Navigate to the project directory if not already there
-cd "$(dirname "$0")/.." || exit 1
+# Determine if we're in the prod directory or project root
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+if [[ $SCRIPT_DIR == */prod ]]; then
+    # We're in the prod directory
+    PROD_DIR="$SCRIPT_DIR"
+    PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
+else
+    # We're in the project root
+    PROD_DIR="$SCRIPT_DIR/prod"
+    PROJECT_ROOT="$SCRIPT_DIR"
+fi
+
+# Navigate to the project root
+cd "$PROJECT_ROOT" || exit 1
 
 # Step 1: Test if the RTSP URL is accessible
 echo -e "${YELLOW}Testing RTSP URL accessibility...${NC}"
@@ -32,7 +44,7 @@ fi
 
 # Step 2: Create a test .env file with the RTSP URL
 echo -e "${YELLOW}Creating test .env file...${NC}"
-cat > prod/.env << EOF
+cat > "$PROD_DIR/.env" << EOF
 # Docker Hub username
 DOCKER_USERNAME=${DOCKER_USERNAME}
 
@@ -66,7 +78,7 @@ echo -e "${GREEN}Test .env file created${NC}"
 
 # Step 3: Test docker-compose configuration
 echo -e "${YELLOW}Testing docker-compose configuration...${NC}"
-if docker-compose -f prod/docker-compose.yml config > /dev/null; then
+if docker-compose -f "$PROD_DIR/docker-compose.yml" config > /dev/null; then
     echo -e "${GREEN}Docker-compose configuration is valid${NC}"
 else
     echo -e "${RED}Docker-compose configuration is invalid${NC}"
@@ -82,16 +94,16 @@ if [[ "$DEPLOY_CHOICE" == "y" || "$DEPLOY_CHOICE" == "Y" ]]; then
     
     # Build the base image first
     echo -e "${YELLOW}Building base image...${NC}"
-    docker build --platform linux/amd64 -t facerecognition-base:latest -f prod/Dockerfile.base .
+    docker build --platform linux/amd64 -t facerecognition-base:latest -f "$PROD_DIR/Dockerfile.base" .
     
     # Start the services
     echo -e "${YELLOW}Starting services...${NC}"
-    docker-compose -f prod/docker-compose.yml up -d
+    docker-compose -f "$PROD_DIR/docker-compose.yml" up -d
     
     # Check if services are running
     echo -e "${YELLOW}Checking if services are running...${NC}"
-    running_services=$(docker-compose -f prod/docker-compose.yml ps --services --filter "status=running" | wc -l)
-    total_services=$(docker-compose -f prod/docker-compose.yml ps --services | wc -l)
+    running_services=$(docker-compose -f "$PROD_DIR/docker-compose.yml" ps --services --filter "status=running" | wc -l)
+    total_services=$(docker-compose -f "$PROD_DIR/docker-compose.yml" ps --services | wc -l)
     
     echo -e "${YELLOW}Running services: ${running_services} out of ${total_services}${NC}"
     
@@ -99,20 +111,20 @@ if [[ "$DEPLOY_CHOICE" == "y" || "$DEPLOY_CHOICE" == "Y" ]]; then
         echo -e "${GREEN}All services are running!${NC}"
     else
         echo -e "${RED}Some services are not running. Please check the logs:${NC}"
-        echo -e "${YELLOW}docker-compose -f prod/docker-compose.yml logs${NC}"
+        echo -e "${YELLOW}docker-compose -f $PROD_DIR/docker-compose.yml logs${NC}"
     fi
     
     # Show service status
     echo -e "${YELLOW}Service status:${NC}"
-    docker-compose -f prod/docker-compose.yml ps
+    docker-compose -f "$PROD_DIR/docker-compose.yml" ps
     
     echo -e "${YELLOW}Viewing logs for 20 seconds... Press Ctrl+C to stop${NC}"
-    timeout 20 docker-compose -f prod/docker-compose.yml logs -f || true
+    timeout 20 docker-compose -f "$PROD_DIR/docker-compose.yml" logs -f || true
     
     echo -e "${GREEN}Testing completed!${NC}"
     echo -e "${YELLOW}Use these commands for further investigation:${NC}"
-    echo -e "${YELLOW}- View logs: docker-compose -f prod/docker-compose.yml logs -f${NC}"
-    echo -e "${YELLOW}- Stop services: docker-compose -f prod/docker-compose.yml down${NC}"
+    echo -e "${YELLOW}- View logs: docker-compose -f $PROD_DIR/docker-compose.yml logs -f${NC}"
+    echo -e "${YELLOW}- Stop services: docker-compose -f $PROD_DIR/docker-compose.yml down${NC}"
 else
     echo -e "${YELLOW}Deployment skipped. Configuration tests completed.${NC}"
 fi 
