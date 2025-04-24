@@ -75,7 +75,7 @@ services:
       - REDIS_HOST=redis
       - MODEL_PATH=/app/prod/face_detection/model/best.pt
     volumes:
-      - ../runs/detect/train3/weights/best.pt:/app/prod/face_detection/model/best.pt
+      - ${MODEL_PATH:-../runs/detect/train3/weights/best.pt}:/app/prod/face_detection/model/best.pt
     restart: unless-stopped
     networks:
       - face_recognition_network

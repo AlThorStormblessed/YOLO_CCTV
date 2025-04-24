@@ -9,15 +9,39 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender-dev \
+    build-essential \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
+
+# Set pip timeout and retries to handle network issues
+ENV PIP_DEFAULT_TIMEOUT=200
+ENV PIP_RETRIES=10
 
 # Copy base requirements first to leverage Docker caching
 COPY prod/requirements.base.txt /app/requirements.base.txt
-RUN pip install --no-cache-dir -r requirements.base.txt
+
+# Install packages one by one to avoid timeout issues with large packages
+RUN pip install --no-cache-dir redis==5.0.1 numpy==1.24.3
+RUN pip install --no-cache-dir opencv-python==4.8.1.78 opencv-python-headless==4.8.1.78
+RUN pip install --no-cache-dir pydantic==2.5.2 pydantic-settings==2.1.0 python-dotenv==1.0.0
+RUN pip install --no-cache-dir ultralytics==8.3.111
+RUN pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir prisma==0.11.0 psycopg2-binary==2.9.9 pgvector==0.2.3
+
+# Install face_recognition specific packages
+RUN pip install --no-cache-dir deepface==0.0.79 flask==2.2.3 scikit-learn==1.2.2 dlib==19.24.1
 
 # Copy the shared modules
 COPY prod/config.py /app/prod/config.py
 COPY prod/utils.py /app/prod/utils.py
+
+# Create directory structure 
+RUN mkdir -p /app/prod/face_detection
+RUN mkdir -p /app/prod/face_detection/model
+RUN mkdir -p /app/prod/face_recognition
+RUN mkdir -p /app/prod/stream_processor
+RUN mkdir -p /app/prod/result_aggregator
+RUN mkdir -p /app/db
 
 # Set Python path
 ENV PYTHONPATH=/app 

@@ -17,9 +17,6 @@ COPY prod/__init__.py /app/prod/
 COPY prod/config.py /app/prod/
 COPY prod/utils.py /app/prod/
 
-# Copy the model file
-COPY prod/face_detection/model/best.pt /app/prod/face_detection/model/
-
 # Set the model path environment variable
 ENV MODEL_PATH=/app/prod/face_detection/model/best.pt
 
