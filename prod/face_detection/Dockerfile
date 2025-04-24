@@ -16,4 +16,4 @@ COPY prod/face_detection /app/prod/face_detection
 COPY runs/detect/train3/weights/best.pt /app/model/best.pt
 
 # Default command
-CMD ["python", "-m", "prod.face_detection.face_detection", "--workers", "2", "--model_path", "/app/model/best.pt"] 
+CMD ["python", "-m", "prod.face_detection.face_detection", "--workers", "2", "--model", "/app/model/best.pt"] 
