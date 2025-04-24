@@ -10,6 +10,9 @@ ENV_DIR="$PROJECT_ROOT/venv"
 PID_DIR="$SCRIPT_DIR/pids"
 LOG_DIR="$SCRIPT_DIR/logs"
 
+# Create migrations directory if it doesn't exist
+mkdir -p "$SCRIPT_DIR/migrations"
+
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
     echo "Error: Docker is not running. Please start Docker and try again."
@@ -75,29 +78,91 @@ until docker exec face_recognition_postgres pg_isready -U postgres 2>/dev/null; 
 done
 echo " PostgreSQL is ready!"
 
-# Set up environment variables for local development
-export REDIS_HOST=${REDIS_HOST:-"localhost"}
-export REDIS_PORT=${REDIS_PORT:-6379}
-export POSTGRES_HOST=${POSTGRES_HOST:-"localhost"}
-export POSTGRES_PORT=${POSTGRES_PORT:-5432}
-export POSTGRES_USER=${POSTGRES_USER:-"postgres"}
-export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-"postgres"}
-export POSTGRES_DB=${POSTGRES_DB:-"face_recognition"}
+# Ensure we're using localhost for database connection
+export REDIS_HOST="localhost"
+export REDIS_PORT=6379
+export POSTGRES_HOST="localhost"
+export POSTGRES_PORT=5432
+export POSTGRES_USER="postgres"
+export POSTGRES_PASSWORD="postgres"
+export POSTGRES_DB="face_recognition"
 export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
 # Initialize the database and create pgvector extension
 echo "Initializing PostgreSQL database and pgvector extension..."
 # First ensure the database exists
-docker exec face_recognition_postgres psql -U postgres -c "CREATE DATABASE face_recognition WITH OWNER postgres" || echo "Database already exists"
+docker exec face_recognition_postgres psql -U postgres -c "CREATE DATABASE face_recognition WITH OWNER postgres" 2>/dev/null || echo "Database already exists"
 
 # Then create the pgvector extension
-docker exec face_recognition_postgres psql -U postgres -d face_recognition -c "CREATE EXTENSION IF NOT EXISTS vector;" || echo "Could not create vector extension"
+docker exec face_recognition_postgres psql -U postgres -d face_recognition -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || echo "Could not create vector extension"
+
+# Create the SQL migration file if it doesn't exist
+if [ ! -f "$SCRIPT_DIR/migrations/001_create_initial_schema.sql" ]; then
+    echo "Creating SQL migration file..."
+    cat > "$SCRIPT_DIR/migrations/001_create_initial_schema.sql" << 'EOL'
+-- Initial schema for face recognition system
+-- This file is used if Prisma migrations fail
+
+-- Make sure the vector extension is enabled
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Create Person table
+CREATE TABLE IF NOT EXISTS "Person" (
+    "id" TEXT PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "faceVector" vector(512),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Face table
+CREATE TABLE IF NOT EXISTS "Face" (
+    "id" TEXT PRIMARY KEY,
+    "imageData" BYTEA NOT NULL,
+    "faceVector" vector(512),
+    "personId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Face_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- Create Detection table
+CREATE TABLE IF NOT EXISTS "Detection" (
+    "id" TEXT PRIMARY KEY,
+    "streamId" TEXT NOT NULL,
+    "timestamp" DOUBLE PRECISION NOT NULL,
+    "bbox" JSONB NOT NULL,
+    "confidence" DOUBLE PRECISION NOT NULL,
+    "personId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "processedAt" DOUBLE PRECISION NOT NULL,
+    CONSTRAINT "Detection_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Create Stream table
+CREATE TABLE IF NOT EXISTS "Stream" (
+    "id" TEXT PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "rtspUrl" TEXT NOT NULL UNIQUE,
+    "description" TEXT,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS "Person_faceVector_idx" ON "Person" USING gist("faceVector");
+CREATE INDEX IF NOT EXISTS "Face_faceVector_idx" ON "Face" USING gist("faceVector");
+CREATE INDEX IF NOT EXISTS "Detection_streamId_timestamp_idx" ON "Detection"("streamId", "timestamp");
+EOL
+fi
 
 # Run Prisma migrations
 echo "Running Prisma migrations..."
 cd "$SCRIPT_DIR"
 MIGRATION_SUCCESS=false
 if command -v npx &> /dev/null; then
+    # Use the correct DATABASE_URL for Prisma
+    DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}" \
     npx prisma migrate deploy && MIGRATION_SUCCESS=true || echo "Failed to run Prisma migrations. Falling back to manual SQL script."
 else
     echo "Warning: npx not found. Skipping Prisma migrations. Using manual SQL script instead."
@@ -123,14 +188,21 @@ echo "PostgreSQL: $POSTGRES_HOST:$POSTGRES_PORT (user: $POSTGRES_USER, db: $POST
 echo "Database URL: $DATABASE_URL"
 echo "-----------------------------------------------------------"
 
-# Function to start a service
+# Install the prod package if not already installed
+if ! python -c "import prod" &>/dev/null; then
+    echo "Installing the prod package in development mode..."
+    cd "$PROJECT_ROOT"
+    pip install -e .
+fi
+
+# Function to start a service with proper PYTHONPATH
 start_service() {
     local service=$1
     local module=$2
     local args=$3
 
     echo "Starting $service service..."
-    python -m $module $args > "$LOG_DIR/${service}.log" 2>&1 &
+    PYTHONPATH="$PROJECT_ROOT" python -m $module $args > "$LOG_DIR/${service}.log" 2>&1 &
     local pid=$!
     echo $pid > "$PID_DIR/${service}.pid"
     echo "$service started with PID $pid"
