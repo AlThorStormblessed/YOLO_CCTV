@@ -75,10 +75,6 @@ until docker exec face_recognition_postgres pg_isready -U postgres 2>/dev/null; 
 done
 echo " PostgreSQL is ready!"
 
-# Create pgvector extension if it doesn't exist
-echo "Ensuring pgvector extension is created..."
-docker exec face_recognition_postgres psql -U postgres -d face_recognition -c 'CREATE EXTENSION IF NOT EXISTS vector;'
-
 # Set up environment variables for local development
 export REDIS_HOST=${REDIS_HOST:-"localhost"}
 export REDIS_PORT=${REDIS_PORT:-6379}
@@ -89,11 +85,42 @@ export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-"postgres"}
 export POSTGRES_DB=${POSTGRES_DB:-"face_recognition"}
 export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
+# Initialize the database and create pgvector extension
+echo "Initializing PostgreSQL database and pgvector extension..."
+# First ensure the database exists
+docker exec face_recognition_postgres psql -U postgres -c "CREATE DATABASE face_recognition WITH OWNER postgres" || echo "Database already exists"
+
+# Then create the pgvector extension
+docker exec face_recognition_postgres psql -U postgres -d face_recognition -c "CREATE EXTENSION IF NOT EXISTS vector;" || echo "Could not create vector extension"
+
+# Run Prisma migrations
+echo "Running Prisma migrations..."
+cd "$SCRIPT_DIR"
+MIGRATION_SUCCESS=false
+if command -v npx &> /dev/null; then
+    npx prisma migrate deploy && MIGRATION_SUCCESS=true || echo "Failed to run Prisma migrations. Falling back to manual SQL script."
+else
+    echo "Warning: npx not found. Skipping Prisma migrations. Using manual SQL script instead."
+fi
+
+# If Prisma migrations failed, run the SQL script directly
+if [ "$MIGRATION_SUCCESS" = false ]; then
+    echo "Applying manual SQL migrations..."
+    if [ -f "$SCRIPT_DIR/migrations/001_create_initial_schema.sql" ]; then
+        docker exec -i face_recognition_postgres psql -U postgres -d face_recognition < "$SCRIPT_DIR/migrations/001_create_initial_schema.sql"
+        echo "Manual SQL migrations applied."
+    else
+        echo "Error: Manual SQL migration file not found at $SCRIPT_DIR/migrations/001_create_initial_schema.sql"
+        echo "Database schema may not be properly initialized."
+    fi
+fi
+
 # Display connection information
 echo "-----------------------------------------------------------"
 echo "Connection Information:"
 echo "Redis: $REDIS_HOST:$REDIS_PORT"
 echo "PostgreSQL: $POSTGRES_HOST:$POSTGRES_PORT (user: $POSTGRES_USER, db: $POSTGRES_DB)"
+echo "Database URL: $DATABASE_URL"
 echo "-----------------------------------------------------------"
 
 # Function to start a service

@@ -6,6 +6,7 @@ This guide explains how to set up and run the face recognition system without us
 
 - Python 3.10 or later
 - Docker and Docker Compose
+- Node.js and npm (for Prisma database migrations, optional but recommended)
 - A YOLO face detection model (e.g., the pre-trained model in `runs/detect/train3/weights/best.pt`)
 - RTSP camera streams to monitor
 
@@ -43,7 +44,12 @@ This guide explains how to set up and run the face recognition system without us
 
 3. **Initialize the database**:
 
-   The PostgreSQL database with pgvector extension will be automatically initialized in a Docker container when you start the system. You don't need to install PostgreSQL locally.
+   The PostgreSQL database with pgvector extension will be automatically initialized in a Docker container when you start the system. The database schema will be created using one of two methods:
+   
+   - If Node.js and npm are installed, Prisma migrations will be used.
+   - If Node.js is not available, a manual SQL script will be used as a fallback.
+
+   You don't need to install PostgreSQL locally as it runs in Docker.
 
 ## Starting the System
 
@@ -173,4 +179,41 @@ The system consists of several components that communicate through Redis queues:
 4. **Result Aggregator**: Stores recognition results
 5. **Web Interface**: Provides a dashboard for monitoring the system
 
-Each component runs as a separate Python process, allowing for easier debugging and reduced resource usage compared to Docker containers. 
+Each component runs as a separate Python process, allowing for easier debugging and reduced resource usage compared to Docker containers.
+
+## Database Migrations
+
+If you need to make changes to the database schema:
+
+1. **Create a new migration:**
+
+   ```bash
+   cd /Users/tanishqsingh/Desktop/projects/YOLO_CCTV/prod
+   ./create-migration.sh
+   ```
+
+   This script will:
+   - Start the PostgreSQL container if needed
+   - Create the database if it doesn't exist
+   - Run Prisma's migration tool
+   - Generate a new migration based on changes to `prisma/schema.prisma`
+
+2. **Manually apply migrations:**
+
+   Migrations are automatically applied when you run `start_local.sh`, but you can also apply them manually:
+
+   ```bash
+   cd /Users/tanishqsingh/Desktop/projects/YOLO_CCTV/prod
+   npx prisma migrate deploy
+   ```
+
+3. **Reset the database (caution - destructive):**
+
+   If you need to reset the database completely:
+
+   ```bash
+   cd /Users/tanishqsingh/Desktop/projects/YOLO_CCTV/prod
+   npx prisma migrate reset
+   ```
+
+   This will drop and recreate the database and apply all migrations. 

@@ -49,6 +49,24 @@ if ! command -v docker-compose &> /dev/null; then
     fi
 fi
 
+# Check if Node.js is installed (required for Prisma)
+if ! command -v node &> /dev/null; then
+    echo "Warning: Node.js is required for Prisma migrations but is not installed."
+    echo "Prisma migrations will be skipped during startup."
+    echo "Please install Node.js from https://nodejs.org/"
+else
+    NODE_VERSION=$(node -v)
+    echo "Found Node.js version $NODE_VERSION"
+    
+    # Check if npm is installed
+    if ! command -v npm &> /dev/null; then
+        echo "Warning: npm is required but not found. Please install npm."
+    else
+        NPM_VERSION=$(npm -v)
+        echo "Found npm version $NPM_VERSION"
+    fi
+fi
+
 # Create virtual environment if it doesn't exist
 if [ ! -d "$ENV_DIR" ]; then
     echo "Creating virtual environment..."
@@ -65,13 +83,51 @@ echo "Installing dependencies..."
 pip install --upgrade pip
 pip install -r "$SCRIPT_DIR/local_requirements.txt"
 
-# Generate Prisma client
-echo "Generating Prisma client..."
+# Initialize Prisma
+echo "Setting up Prisma..."
 cd "$SCRIPT_DIR"
-if ! command -v prisma &> /dev/null; then
-    npm install -g prisma
+
+# Create a package.json file if it doesn't exist
+if [ ! -f "$SCRIPT_DIR/package.json" ]; then
+    echo "Creating package.json file..."
+    cat > "$SCRIPT_DIR/package.json" << EOL
+{
+  "name": "face-recognition-system",
+  "version": "1.0.0",
+  "description": "Face Recognition System",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.4.2",
+    "prisma": "^5.4.2"
+  }
+}
+EOL
 fi
-prisma generate
+
+# Install Prisma CLI globally if it's not installed
+if command -v npm &> /dev/null; then
+    echo "Installing Prisma CLI..."
+    npm install -g prisma || echo "Failed to install Prisma CLI globally. This may be a permissions issue."
+    
+    # Install local dependencies
+    echo "Installing local Node.js dependencies..."
+    npm install || echo "Failed to install local dependencies. You may need to run npm install manually."
+    
+    # Generate Prisma client
+    echo "Generating Prisma client..."
+    npx prisma generate || echo "Failed to generate Prisma client. Please check your Prisma schema."
+else
+    echo "Skipping Prisma initialization as npm is not available."
+fi
 
 echo "Checking Docker and Docker Compose..."
 echo "Docker and Docker Compose will be used to run Redis and PostgreSQL with pgvector."
@@ -91,6 +147,12 @@ if [ ! -f "$SCRIPT_DIR/.env" ]; then
     echo "Please edit $SCRIPT_DIR/.env with your configuration."
 else
     echo ".env file already exists."
+fi
+
+# Create Prisma migrations directory if it doesn't exist
+if [ ! -d "$SCRIPT_DIR/prisma/migrations" ]; then
+    echo "Creating Prisma migrations directory..."
+    mkdir -p "$SCRIPT_DIR/prisma/migrations"
 fi
 
 echo "Environment setup complete! Activate it with:"
