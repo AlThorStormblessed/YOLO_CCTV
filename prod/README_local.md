@@ -5,8 +5,7 @@ This guide explains how to set up and run the face recognition system without us
 ## Prerequisites
 
 - Python 3.10 or later
-- Redis server
-- PostgreSQL with pgvector extension
+- Docker and Docker Compose
 - A YOLO face detection model (e.g., the pre-trained model in `runs/detect/train3/weights/best.pt`)
 - RTSP camera streams to monitor
 
@@ -24,7 +23,7 @@ This guide explains how to set up and run the face recognition system without us
    - Create a Python virtual environment
    - Install all required dependencies
    - Set up the Prisma client for database access
-   - Check for Redis and PostgreSQL installations
+   - Check for Docker and Docker Compose installations
    - Create a default `.env` file
 
 2. **Configure the environment**:
@@ -44,12 +43,7 @@ This guide explains how to set up and run the face recognition system without us
 
 3. **Initialize the database**:
 
-   Ensure PostgreSQL is running and has the pgvector extension installed. Then create the database:
-
-   ```bash
-   createdb face_recognition
-   psql -d face_recognition -c 'CREATE EXTENSION vector;'
-   ```
+   The PostgreSQL database with pgvector extension will be automatically initialized in a Docker container when you start the system. You don't need to install PostgreSQL locally.
 
 ## Starting the System
 
@@ -63,8 +57,7 @@ This guide explains how to set up and run the face recognition system without us
 
    This script will:
    - Activate the virtual environment if needed
-   - Start Redis server if it's not already running
-   - Start PostgreSQL if it's not already running
+   - Start Redis and PostgreSQL in Docker containers
    - Configure environment variables
    - Start all system components:
      - Stream processor
@@ -150,7 +143,7 @@ This script will stop all running services. It will ask if you also want to stop
 1. **Service not starting**:
    - Check the service log file in the `logs` directory
    - Ensure all dependencies are installed
-   - Verify that Redis and PostgreSQL are running
+   - Verify that Docker is running and the Redis and PostgreSQL containers are active (`docker ps`)
 
 2. **Cannot access web interface remotely**:
    - Check that the web interface is running (`ps aux | grep web_interface`)
@@ -161,9 +154,14 @@ This script will stop all running services. It will ask if you also want to stop
    - Update the `MODEL_PATH` in your `.env` file to point to your YOLO model
 
 4. **Database connection errors**:
-   - Verify PostgreSQL is running
-   - Check that the pgvector extension is installed
-   - Ensure database credentials in the `.env` file are correct
+   - Verify PostgreSQL container is running (`docker ps | grep postgres`)
+   - Check Docker logs (`docker logs face_recognition_postgres`)
+   - Ensure database credentials in the `.env` file match the ones in the Docker container
+
+5. **Docker-related issues**:
+   - Ensure Docker daemon is running
+   - Check for port conflicts (Redis uses port 6379, PostgreSQL uses port 5432)
+   - View logs with `docker logs face_recognition_redis` or `docker logs face_recognition_postgres`
 
 ## System Architecture
 

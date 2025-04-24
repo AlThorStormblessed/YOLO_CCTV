@@ -33,40 +33,37 @@ else
     echo "No PID directory found at $PID_DIR."
 fi
 
-# Don't stop Redis and PostgreSQL by default, as they might be used by other applications
-# Ask the user if they want to stop these services
-read -p "Do you want to stop Redis and PostgreSQL? (y/n) " -n 1 -r
+# Ask if Redis and PostgreSQL Docker containers should be stopped
+read -p "Do you want to stop Redis and PostgreSQL Docker containers? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    # Check if Redis is running and stop it
-    if pgrep -x "redis-server" > /dev/null; then
-        echo "Stopping Redis server..."
-        redis-cli shutdown
-        echo "Redis server stopped."
+    echo "Stopping Docker containers..."
+    
+    if command -v docker-compose &> /dev/null; then
+        # Using docker-compose command
+        docker-compose -f "$SCRIPT_DIR/docker-compose-local.yml" down
+    elif docker compose version &> /dev/null; then
+        # Using docker compose subcommand
+        docker compose -f "$SCRIPT_DIR/docker-compose-local.yml" down
     else
-        echo "Redis server was not running."
+        echo "Warning: Docker Compose not found, trying to stop containers manually."
+        
+        # Stop Redis container if it exists
+        if docker ps -q -f name=face_recognition_redis | grep -q .; then
+            echo "Stopping Redis container..."
+            docker stop face_recognition_redis
+        fi
+        
+        # Stop PostgreSQL container if it exists
+        if docker ps -q -f name=face_recognition_postgres | grep -q .; then
+            echo "Stopping PostgreSQL container..."
+            docker stop face_recognition_postgres
+        fi
     fi
     
-    # Stop PostgreSQL based on OS
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        if brew services list | grep postgresql | grep started > /dev/null; then
-            echo "Stopping PostgreSQL..."
-            brew services stop postgresql
-            echo "PostgreSQL stopped."
-        else
-            echo "PostgreSQL was not running."
-        fi
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if systemctl is-active --quiet postgresql; then
-            echo "Stopping PostgreSQL..."
-            sudo systemctl stop postgresql
-            echo "PostgreSQL stopped."
-        else
-            echo "PostgreSQL was not running."
-        fi
-    else
-        echo "Unsupported OS. Please stop PostgreSQL manually if needed."
-    fi
+    echo "Docker containers stopped."
+else
+    echo "Redis and PostgreSQL Docker containers left running."
 fi
 
 echo "All services stopped." 

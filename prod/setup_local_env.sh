@@ -27,6 +27,28 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+    echo "Error: Docker is required but not installed. Please install Docker and try again."
+    echo "Visit https://docs.docker.com/get-docker/ for installation instructions."
+    exit 1
+fi
+
+# Check if Docker Compose is installed
+if ! command -v docker-compose &> /dev/null; then
+    echo "Error: Docker Compose is required but not installed."
+    echo "For newer Docker installations, it should be included as 'docker compose'."
+    echo "If using older Docker versions, please install Docker Compose separately."
+    echo "Visit https://docs.docker.com/compose/install/ for installation instructions."
+    
+    # Check for new docker compose command format
+    if ! docker compose version &> /dev/null; then
+        exit 1
+    else
+        echo "Found Docker Compose as 'docker compose'."
+    fi
+fi
+
 # Create virtual environment if it doesn't exist
 if [ ! -d "$ENV_DIR" ]; then
     echo "Creating virtual environment..."
@@ -51,37 +73,21 @@ if ! command -v prisma &> /dev/null; then
 fi
 prisma generate
 
-echo "Checking Redis installation..."
-if ! command -v redis-server &> /dev/null; then
-    echo "Warning: Redis server not found. Please install Redis:"
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        echo "  For macOS: brew install redis"
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        echo "  For Ubuntu/Debian: sudo apt-get install redis-server"
-        echo "  For CentOS/RHEL: sudo yum install redis"
-    else
-        echo "  Please install Redis for your OS: https://redis.io/download"
-    fi
-fi
-
-echo "Checking PostgreSQL installation..."
-if ! command -v psql &> /dev/null; then
-    echo "Warning: PostgreSQL not found. Please install PostgreSQL with pgvector extension:"
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        echo "  For macOS: brew install postgresql"
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        echo "  For Ubuntu/Debian: sudo apt-get install postgresql postgresql-contrib"
-        echo "  For CentOS/RHEL: sudo yum install postgresql-server postgresql-contrib"
-    else
-        echo "  Please install PostgreSQL for your OS: https://www.postgresql.org/download/"
-    fi
-    echo "  Then install pgvector extension: https://github.com/pgvector/pgvector"
-fi
+echo "Checking Docker and Docker Compose..."
+echo "Docker and Docker Compose will be used to run Redis and PostgreSQL with pgvector."
 
 # Create a local .env file if it doesn't exist
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     echo "Creating default .env file..."
     cp "$SCRIPT_DIR/env.template" "$SCRIPT_DIR/.env"
+    
+    # Set Redis and PostgreSQL host to localhost in the .env file
+    sed -i 's/REDIS_HOST=redis/REDIS_HOST=localhost/g' "$SCRIPT_DIR/.env" 2>/dev/null || \
+    sed -i '' 's/REDIS_HOST=redis/REDIS_HOST=localhost/g' "$SCRIPT_DIR/.env"
+    
+    sed -i 's/POSTGRES_HOST=postgres/POSTGRES_HOST=localhost/g' "$SCRIPT_DIR/.env" 2>/dev/null || \
+    sed -i '' 's/POSTGRES_HOST=postgres/POSTGRES_HOST=localhost/g' "$SCRIPT_DIR/.env"
+    
     echo "Please edit $SCRIPT_DIR/.env with your configuration."
 else
     echo ".env file already exists."
@@ -91,4 +97,6 @@ echo "Environment setup complete! Activate it with:"
 echo "  source $ENV_DIR/bin/activate"
 echo ""
 echo "Start the system with:"
-echo "  ./start_local.sh" 
+echo "  ./start_local.sh"
+echo ""
+echo "Redis and PostgreSQL will be started in Docker containers." 

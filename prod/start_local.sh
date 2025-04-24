@@ -10,6 +10,12 @@ ENV_DIR="$PROJECT_ROOT/venv"
 PID_DIR="$SCRIPT_DIR/pids"
 LOG_DIR="$SCRIPT_DIR/logs"
 
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "Error: Docker is not running. Please start Docker and try again."
+    exit 1
+fi
+
 # Make sure the virtual environment is activated
 if [[ "$VIRTUAL_ENV" == "" ]]; then
     echo "Activating virtual environment..."
@@ -41,35 +47,37 @@ if [ ! -f "$MODEL_PATH" ]; then
     fi
 fi
 
-# Start Redis if it's not already running
-if ! pgrep -x "redis-server" > /dev/null; then
-    echo "Starting Redis server..."
-    redis-server --daemonize yes
-    echo "Redis server started."
+# Start Redis and PostgreSQL using Docker Compose
+echo "Starting Redis and PostgreSQL using Docker..."
+if command -v docker-compose &> /dev/null; then
+    # Using docker-compose command
+    docker-compose -f "$SCRIPT_DIR/docker-compose-local.yml" up -d
+elif docker compose version &> /dev/null; then
+    # Using docker compose subcommand
+    docker compose -f "$SCRIPT_DIR/docker-compose-local.yml" up -d
 else
-    echo "Redis server is already running."
+    echo "Error: Cannot find Docker Compose. Please install Docker Compose and try again."
+    exit 1
 fi
 
-# Start PostgreSQL if it's not already running
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    if ! brew services list | grep postgresql | grep started > /dev/null; then
-        echo "Starting PostgreSQL..."
-        brew services start postgresql
-        echo "PostgreSQL started."
-    else
-        echo "PostgreSQL is already running."
-    fi
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if ! systemctl is-active --quiet postgresql; then
-        echo "Starting PostgreSQL..."
-        sudo systemctl start postgresql
-        echo "PostgreSQL started."
-    else
-        echo "PostgreSQL is already running."
-    fi
-else
-    echo "Please ensure PostgreSQL is running."
-fi
+# Wait for services to be ready
+echo "Waiting for Redis to be ready..."
+until docker exec face_recognition_redis redis-cli ping 2>/dev/null | grep -q PONG; do
+    echo -n "."
+    sleep 1
+done
+echo " Redis is ready!"
+
+echo "Waiting for PostgreSQL to be ready..."
+until docker exec face_recognition_postgres pg_isready -U postgres 2>/dev/null; do
+    echo -n "."
+    sleep 1
+done
+echo " PostgreSQL is ready!"
+
+# Create pgvector extension if it doesn't exist
+echo "Ensuring pgvector extension is created..."
+docker exec face_recognition_postgres psql -U postgres -d face_recognition -c 'CREATE EXTENSION IF NOT EXISTS vector;'
 
 # Set up environment variables for local development
 export REDIS_HOST=${REDIS_HOST:-"localhost"}
@@ -80,6 +88,13 @@ export POSTGRES_USER=${POSTGRES_USER:-"postgres"}
 export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-"postgres"}
 export POSTGRES_DB=${POSTGRES_DB:-"face_recognition"}
 export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+
+# Display connection information
+echo "-----------------------------------------------------------"
+echo "Connection Information:"
+echo "Redis: $REDIS_HOST:$REDIS_PORT"
+echo "PostgreSQL: $POSTGRES_HOST:$POSTGRES_PORT (user: $POSTGRES_USER, db: $POSTGRES_DB)"
+echo "-----------------------------------------------------------"
 
 # Function to start a service
 start_service() {
@@ -111,4 +126,5 @@ start_service "result_aggregator" "prod.result_aggregator.result_aggregator" "--
 start_service "web_interface" "prod.web_interface" ""
 
 echo "All services started! Check logs in $LOG_DIR directory."
+echo "Web interface available at: http://localhost:5000"
 echo "To stop all services, run: ./stop_local.sh" 
