@@ -16,6 +16,8 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    networks:
+      - face_recognition_network
 
   # Postgres service for persistent storage
   postgres:
@@ -35,23 +37,23 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    networks:
+      - face_recognition_network
 
   # Stream Processor service
   stream_processor:
-    image: ${DOCKER_USERNAME:-yourusername}/facerecognition-stream-processor:latest
+    build:
+      context: ..
+      dockerfile: prod/stream_processor/Dockerfile
+    container_name: face_recognition_stream
     depends_on:
-      redis:
-        condition: service_healthy
+      - redis
     environment:
       - REDIS_HOST=redis
       - FRAME_SAMPLE_RATE=5
     restart: unless-stopped
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
+    networks:
+      - face_recognition_network
     command:
       [
         "python",
@@ -63,22 +65,20 @@ services:
 
   # Face Detection service
   face_detection:
-    image: ${DOCKER_USERNAME:-yourusername}/facerecognition-face-detection:latest
+    build:
+      context: ..
+      dockerfile: prod/face_detection/Dockerfile
+    container_name: face_recognition_detection
     depends_on:
-      redis:
-        condition: service_healthy
+      - redis
     environment:
       - REDIS_HOST=redis
-      - MODEL_PATH=/app/model/best.pt
+      - MODEL_PATH=/app/prod/face_detection/model/best.pt
     volumes:
-      - ${MODEL_PATH:-./runs/detect/train3/weights/best.pt}:/app/model/best.pt
+      - ../runs/detect/train3/weights/best.pt:/app/prod/face_detection/model/best.pt
     restart: unless-stopped
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: "2"
-          memory: 4G
+    networks:
+      - face_recognition_network
     command:
       [
         "python",
@@ -87,24 +87,22 @@ services:
         "--workers",
         "2",
         "--model",
-        "/app/model/best.pt",
+        "/app/prod/face_detection/model/best.pt",
       ]
 
   # Face Recognition service
   face_recognition:
-    image: ${DOCKER_USERNAME:-yourusername}/facerecognition-face-recognition:latest
+    build:
+      context: ..
+      dockerfile: prod/face_recognition/Dockerfile
+    container_name: face_recognition_recognition
     depends_on:
-      redis:
-        condition: service_healthy
+      - redis
     environment:
       - REDIS_HOST=redis
     restart: unless-stopped
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: "2"
-          memory: 4G
+    networks:
+      - face_recognition_network
     command:
       [
         "python",
@@ -118,12 +116,13 @@ services:
 
   # Result Aggregator service
   result_aggregator:
-    image: ${DOCKER_USERNAME:-yourusername}/facerecognition-result-aggregator:latest
+    build:
+      context: ..
+      dockerfile: prod/result_aggregator/Dockerfile
+    container_name: face_recognition_results
     depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
+      - redis
+      - postgres
     environment:
       - REDIS_HOST=redis
       - POSTGRES_HOST=postgres
@@ -132,12 +131,8 @@ services:
       - POSTGRES_DB=face_recognition
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/face_recognition
     restart: unless-stopped
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
+    networks:
+      - face_recognition_network
     command:
       [
         "python",
@@ -152,3 +147,7 @@ services:
 volumes:
   redis_data:
   postgres_data:
+
+networks:
+  face_recognition_network:
+    driver: bridge

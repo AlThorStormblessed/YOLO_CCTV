@@ -28,6 +28,28 @@ fi
 # Navigate to the project root
 cd "$PROJECT_ROOT" || exit 1
 
+# Step 0: Check if the model file exists
+MODEL_PATH="./runs/detect/train3/weights/best.pt"
+if [ ! -f "$MODEL_PATH" ]; then
+    echo -e "${RED}YOLO model file not found at: $MODEL_PATH${NC}"
+    echo -e "${YELLOW}Please ensure the model file exists. You may need to:${NC}"
+    echo -e "${YELLOW}1. Copy your trained model to this location${NC}"
+    echo -e "${YELLOW}2. Or update the Dockerfile to use a different model location${NC}"
+    
+    # Prompt to continue anyway
+    echo -e "${YELLOW}Do you want to continue anyway? This may cause face detection to fail. (y/n)${NC}"
+    read -r CONTINUE_CHOICE
+    
+    if [[ "$CONTINUE_CHOICE" != "y" && "$CONTINUE_CHOICE" != "Y" ]]; then
+        echo -e "${RED}Deployment cancelled${NC}"
+        exit 1
+    fi
+    
+    echo -e "${YELLOW}Creating empty model directory for testing...${NC}"
+    mkdir -p "$(dirname "$MODEL_PATH")"
+    touch "$MODEL_PATH"
+fi
+
 # Step 1: Test if the RTSP URL is accessible
 echo -e "${YELLOW}Testing RTSP URL accessibility...${NC}"
 if command -v ffprobe >/dev/null 2>&1; then
