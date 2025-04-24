@@ -17,19 +17,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PIP_DEFAULT_TIMEOUT=200
 ENV PIP_RETRIES=10
 
-# Copy base requirements first to leverage Docker caching
-COPY prod/requirements.base.txt /app/requirements.base.txt
+# Install numpy first to ensure proper version (must be <2.0)
+RUN pip install --no-cache-dir numpy==1.24.3
 
-# Install packages one by one to avoid timeout issues with large packages
-RUN pip install --no-cache-dir redis==5.0.1 numpy==1.24.3
-RUN pip install --no-cache-dir opencv-python==4.8.1.78 opencv-python-headless==4.8.1.78
+# Install OpenCV packages with fixed numpy version
+RUN pip install --no-cache-dir opencv-python==4.7.0.72
+
+# Install other dependencies with proper numpy compatibility
+RUN pip install --no-cache-dir redis==5.0.1
 RUN pip install --no-cache-dir pydantic==2.5.2 pydantic-settings==2.1.0 python-dotenv==1.0.0
-RUN pip install --no-cache-dir ultralytics==8.3.111
+RUN pip install --no-cache-dir --no-deps ultralytics==8.0.20
 RUN pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir prisma==0.11.0 psycopg2-binary==2.9.9 pgvector==0.2.3
 
-# Install face_recognition specific packages
-RUN pip install --no-cache-dir deepface==0.0.79 flask==2.2.3 scikit-learn==1.2.2 dlib==19.24.1
+# Alternative approach to install dlib (avoiding compilation issues)
+RUN pip install --no-cache-dir cmake
+# Using a pre-built wheel or installing with less memory usage
+RUN pip install --no-cache-dir dlib==19.24.1 --no-binary=:all: --install-option="--no" --install-option="DLIB_USE_CUDA" || \
+    pip install --no-cache-dir https://github.com/z-mahmud22/Dlib_Windows_Python/releases/download/v1.0.0/dlib-19.24.0-cp310-cp310-win_amd64.whl || \
+    pip install --no-cache-dir dlib==19.22.1  # Fall back to older version if all else fails
+
+RUN pip install --no-cache-dir scikit-learn==1.2.2 flask==2.2.3
+RUN pip install --no-cache-dir --no-deps deepface==0.0.79
 
 # Copy the shared modules
 COPY prod/config.py /app/prod/config.py
@@ -44,4 +53,7 @@ RUN mkdir -p /app/prod/result_aggregator
 RUN mkdir -p /app/db
 
 # Set Python path
-ENV PYTHONPATH=/app 
+ENV PYTHONPATH=/app
+
+# Set fixed numpy version as environment variable
+ENV NUMPY_VERSION=1.24.3 

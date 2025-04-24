@@ -112,7 +112,14 @@ echo -e "${YELLOW}Do you want to deploy the services for testing? (y/n)${NC}"
 read -r DEPLOY_CHOICE
 
 if [[ "$DEPLOY_CHOICE" == "y" || "$DEPLOY_CHOICE" == "Y" ]]; then
-    echo -e "${YELLOW}Building and deploying services...${NC}"
+    echo -e "${YELLOW}Cleaning up previous containers and images...${NC}"
+    # Stop and remove any containers created by docker-compose
+    docker-compose -f "$PROD_DIR/docker-compose.yml" down --remove-orphans || true
+    
+    # Remove previous images
+    echo -e "${YELLOW}Removing previous images...${NC}"
+    docker rmi -f facerecognition-base:latest || true
+    docker rmi -f $(docker images --filter "reference=prod-*" -q) 2>/dev/null || true
     
     # Build the base image first
     echo -e "${YELLOW}Building base image...${NC}"
@@ -120,10 +127,11 @@ if [[ "$DEPLOY_CHOICE" == "y" || "$DEPLOY_CHOICE" == "Y" ]]; then
     
     # Start the services
     echo -e "${YELLOW}Starting services...${NC}"
-    docker-compose -f "$PROD_DIR/docker-compose.yml" up -d
+    docker-compose -f "$PROD_DIR/docker-compose.yml" up -d --build
     
     # Check if services are running
     echo -e "${YELLOW}Checking if services are running...${NC}"
+    sleep 5 # Give services time to start
     running_services=$(docker-compose -f "$PROD_DIR/docker-compose.yml" ps --services --filter "status=running" | wc -l)
     total_services=$(docker-compose -f "$PROD_DIR/docker-compose.yml" ps --services | wc -l)
     
