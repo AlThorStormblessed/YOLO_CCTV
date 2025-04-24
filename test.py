@@ -5,9 +5,9 @@ import random
 from glob import glob
 import matplotlib.pyplot as plt
 
-MODEL_PATH = "runs/detect/train3/weights/best.pt"
-INPUT_ROOT = "datasets"
-OUTPUT_DIR = "outputs"
+MODEL_PATH = "/Users/tanishqsingh/Desktop/projects/YOLO_CCTV/runs/detect/train3/weights/best.pt"
+INPUT_ROOT = "/Users/tanishqsingh/Desktop/projects/YOLO_CCTV/yolo_annotated_images/datasets"
+OUTPUT_DIR = "/Users/tanishqsingh/Desktop/projects/YOLO_CCTV/outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 model = YOLO(MODEL_PATH)
