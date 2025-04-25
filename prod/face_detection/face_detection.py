@@ -17,12 +17,16 @@ from prod.config import (
     FACES_QUEUE,
     FACE_DETECTION_CONFIDENCE,
     FACE_DETECTION_IOU,
-    MIN_FACE_WIDTH
+    MIN_FACE_WIDTH,
+    QUEUE_FLUSH_INTERVAL,
+    MAX_FRAMES_QUEUE_SIZE,
+    MAX_FACES_QUEUE_SIZE
 )
 from prod.utils import (
     get_redis_connection,
     decode_frame_data,
-    encode_face_data
+    encode_face_data,
+    manage_queue_size
 )
 
 # Configure logging
@@ -78,6 +82,14 @@ class FaceDetector:
             logger.error("Failed to load model, exiting")
             return
         
+        # Start queue management thread
+        queue_mgmt_thread = threading.Thread(
+            target=self._manage_queues,
+            daemon=True
+        )
+        queue_mgmt_thread.start()
+        logger.info("Started queue management thread")
+        
         # Start worker threads
         for i in range(self.workers):
             thread = threading.Thread(
@@ -97,6 +109,32 @@ class FaceDetector:
             logger.info("Keyboard interrupt received, shutting down...")
         finally:
             self._cleanup()
+    
+    def _manage_queues(self):
+        """Periodically manage queue sizes to prevent overflow."""
+        logger.info(f"Queue management thread started, flush interval: {QUEUE_FLUSH_INTERVAL}s")
+        
+        last_check_time = time.time()
+        
+        while not self.stop_event.is_set():
+            try:
+                current_time = time.time()
+                
+                # Manage queues every minute regardless of the flush interval
+                if current_time - last_check_time >= 60:
+                    frames_trimmed = manage_queue_size(self.redis_client, FRAMES_QUEUE, MAX_FRAMES_QUEUE_SIZE)
+                    faces_trimmed = manage_queue_size(self.redis_client, FACES_QUEUE, MAX_FACES_QUEUE_SIZE)
+                    
+                    if frames_trimmed > 0 or faces_trimmed > 0:
+                        logger.info(f"Queue management: Trimmed {frames_trimmed} frames and {faces_trimmed} faces")
+                    
+                    last_check_time = current_time
+                
+                time.sleep(10)  # Sleep for 10 seconds between checks
+                
+            except Exception as e:
+                logger.error(f"Error in queue management: {str(e)}")
+                time.sleep(30)  # Longer sleep on error
     
     def _process_frames(self, worker_id: int):
         """

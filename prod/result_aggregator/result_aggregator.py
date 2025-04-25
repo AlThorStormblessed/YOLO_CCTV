@@ -14,11 +14,16 @@ from prod.config import (
     REDIS_PASSWORD,
     RECOGNITION_QUEUE,
     RESULTS_STORE,
-    DATABASE_URL
+    DATABASE_URL,
+    MAX_RECOGNITION_QUEUE_SIZE,
+    MAX_RESULTS_STORE_SIZE,
+    QUEUE_FLUSH_INTERVAL
 )
 from prod.utils import (
     get_redis_connection,
-    decode_recognition_result
+    decode_recognition_result,
+    manage_queue_size,
+    manage_hash_size
 )
 
 # Configure logging
@@ -172,17 +177,55 @@ class ResultAggregator:
     
     def _periodic_cleanup(self):
         """Periodically clean up old results."""
+        logger.info(f"Cleanup thread started, flush interval: {QUEUE_FLUSH_INTERVAL}s")
+        
+        last_full_cleanup_time = time.time()
+        
         while not self.stop_event.is_set():
             try:
-                # Sleep for a while
-                time.sleep(self.result_ttl / 2)
+                current_time = time.time()
                 
-                # Remove old keys
-                # This is handled by Redis TTL, but we could implement additional cleanup here
-                logger.debug("Performing periodic cleanup")
+                # Check queues every minute
+                queue_trimmed = manage_queue_size(self.redis_client, RECOGNITION_QUEUE, MAX_RECOGNITION_QUEUE_SIZE)
+                hash_trimmed = manage_hash_size(self.redis_client, RESULTS_STORE, MAX_RESULTS_STORE_SIZE)
+                
+                if queue_trimmed > 0 or hash_trimmed > 0:
+                    logger.info(f"Queue management: Trimmed {queue_trimmed} recognition results and {hash_trimmed} stored results")
+                
+                # Perform more thorough cleanup based on TTL at the configured interval
+                if current_time - last_full_cleanup_time >= QUEUE_FLUSH_INTERVAL:
+                    logger.info("Performing full periodic cleanup")
+                    
+                    # Find expired results based on timestamp
+                    current_time = time.time()
+                    expired_cutoff = current_time - self.result_ttl
+                    
+                    all_keys = self.redis_client.hkeys(RESULTS_STORE)
+                    expired_keys = []
+                    
+                    for key in all_keys:
+                        key_str = key.decode('utf-8')
+                        parts = key_str.split(':')
+                        if len(parts) >= 2:
+                            timestamp = float(parts[1])
+                            if timestamp < expired_cutoff:
+                                expired_keys.append(key)
+                    
+                    # Delete expired keys
+                    if expired_keys:
+                        for key in expired_keys:
+                            self.redis_client.hdel(RESULTS_STORE, key)
+                        
+                        logger.info(f"Removed {len(expired_keys)} expired results")
+                    
+                    last_full_cleanup_time = current_time
+                
+                # Sleep for a while
+                time.sleep(60)  # Check every minute
                 
             except Exception as e:
                 logger.error(f"Error in periodic cleanup: {str(e)}")
+                time.sleep(30)  # Longer sleep on error
     
     def _cleanup(self):
         """Clean up resources before shutdown."""

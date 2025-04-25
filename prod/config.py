@@ -20,6 +20,13 @@ RECOGNITION_QUEUE = "recognition_queue"
 RESULTS_STORE = "results_store"
 KNOWN_FACES_STORE = "known_faces"
 
+# Queue size limits
+MAX_FRAMES_QUEUE_SIZE = int(os.environ.get("MAX_FRAMES_QUEUE_SIZE", 100))
+MAX_FACES_QUEUE_SIZE = int(os.environ.get("MAX_FACES_QUEUE_SIZE", 200))
+MAX_RECOGNITION_QUEUE_SIZE = int(os.environ.get("MAX_RECOGNITION_QUEUE_SIZE", 200))
+MAX_RESULTS_STORE_SIZE = int(os.environ.get("MAX_RESULTS_STORE_SIZE", 1000))
+QUEUE_FLUSH_INTERVAL = int(os.environ.get("QUEUE_FLUSH_INTERVAL", 3600))  # In seconds, default 1 hour
+
 # Frame processing
 FRAME_SAMPLE_RATE = int(os.environ.get("FRAME_SAMPLE_RATE", 5))  # Frames per second to process
 
