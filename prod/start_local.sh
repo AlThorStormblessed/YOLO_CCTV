@@ -140,7 +140,7 @@ start_service() {
 
 # Launch services
 RTSP_URLS=${RTSP_URLS:-"rtsp://example.com/stream1,https://studentimagess.s3.us-east-1.amazonaws.com/test_video_for_stream_process.mov"}
-start_service "stream_processor" "prod.stream_processor.stream_processor" "--urls '$RTSP_URLS'"
+start_service "stream_processor" "prod.stream_processor.stream_processor" "--urls $RTSP_URLS"
 start_service "face_detection" "prod.face_detection.face_detection" "--model $MODEL_PATH --workers 2"
 start_service "face_recognition" "prod.face_recognition.face_recognition" "--workers 2 --threshold 0.7"
 start_service "result_aggregator" "prod.result_aggregator.result_aggregator" "--workers 2 --ttl 3600"
