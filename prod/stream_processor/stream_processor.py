@@ -8,6 +8,7 @@ import sys
 import os
 from typing import Dict, List, Optional
 import random
+import argparse
 
 from prod.config import (
     REDIS_HOST,
@@ -27,14 +28,14 @@ logging.basicConfig(
 logger = logging.getLogger('stream_processor')
 
 class RTSPStreamProcessor:
-    """Processes RTSP streams or video files and extracts frames for face detection."""
+    """Processes RTSP streams, HTTP(S) URLs, or video files and extracts frames for face detection."""
     
     def __init__(self, sources: List[str]):
         """
         Initialize the processor.
         
         Args:
-            sources: List of RTSP URLs or video file paths
+            sources: List of RTSP URLs, HTTP(S) URLs, or video file paths
         """
         self.sources = sources
         self.redis_client = get_redis_connection()
@@ -102,10 +103,10 @@ class RTSPStreamProcessor:
     
     def _process_source(self, src: str, source_id: str):
         """
-        Process a single RTSP URL or video file.
+        Process a single RTSP URL, HTTP(S) URL, or video file.
         
         Args:
-            src: RTSP URL or video file path
+            src: RTSP URL, HTTP(S) URL, or video file path
             source_id: Unique identifier
         """
         logger.info(f"Starting to process source: {source_id}")
@@ -127,6 +128,10 @@ class RTSPStreamProcessor:
                         cap.set(cv2.CAP_PROP_BUFFERSIZE, 5)
                         os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|timeout;10000000"
                         logger.info(f"Connecting to {source_id} (RTSP) (attempt {reconnect_attempt + 1})...")
+                        success = cap.open(src, cv2.CAP_FFMPEG)
+                    elif src.startswith(('http://', 'https://')):
+                        logger.info(f"Connecting to {source_id} (HTTP/HTTPS) (attempt {reconnect_attempt + 1})...")
+                        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "timeout;10000000"
                         success = cap.open(src, cv2.CAP_FFMPEG)
                     else:
                         logger.info(f"Opening video file: {src}")
@@ -151,11 +156,15 @@ class RTSPStreamProcessor:
                 
                 if not ret:
                     logger.warning(f"End of stream or failed frame read for {source_id}")
-                    if not src.startswith('rtsp://'):
+                    if not (src.startswith('rtsp://') or src.startswith(('http://', 'https://'))):
                         logger.info(f"Reached end of file for {source_id}. Exiting.")
                         break
                     cap.release()
                     cap = None
+                    reconnect_attempt += 1
+                    sleep_time = min(30, reconnect_attempt * 2)
+                    logger.info(f"Will attempt to reconnect to {source_id} in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
                     continue
                 
                 reconnect_attempt = 0
@@ -184,7 +193,10 @@ class RTSPStreamProcessor:
                 if cap is not None:
                     cap.release()
                     cap = None
-                time.sleep(1)
+                reconnect_attempt += 1
+                sleep_time = min(30, reconnect_attempt * 2)
+                logger.info(f"Will attempt to reconnect to {source_id} in {sleep_time} seconds...")
+                time.sleep(sleep_time)
         
         if cap is not None:
             cap.release()
@@ -205,14 +217,19 @@ class RTSPStreamProcessor:
 
 def main():
     """Main entry point for the processor."""
-    import argparse
-    parser = argparse.ArgumentParser(description='RTSP/Video Processor')
-    parser.add_argument('--sources', required=True, help='Sources (comma-separated)')
+    parser = argparse.ArgumentParser(description='Stream Processor')
+    parser.add_argument('--urls', required=True, help='Sources (comma-separated RTSP/HTTP URLs or file paths)')
     args = parser.parse_args()
     
-    sources = [s.strip() for s in args.sources.split(',')]
-    processor = RTSPStreamProcessor(sources)
-    processor.start()
+    try:
+        sources = [s.strip() for s in args.urls.split(',')]
+        processor = RTSPStreamProcessor(sources)
+        processor.start()
+    except Exception as e:
+        logger.error(f"Failed to run stream processor: {str(e)}")
+        return 1
+    
+    return 0
 
 
 if __name__ == "__main__":
