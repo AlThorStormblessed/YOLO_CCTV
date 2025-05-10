@@ -30,15 +30,27 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
 # Get CORS origins from environment or use default
 cors_origins = os.environ.get("CORS_ORIGINS", "*")
+
+# Log the CORS origins for debugging
+logger.info(f"CORS origins from environment: {cors_origins}")
+
 # If CORS_ORIGINS is a comma-separated list, split it into a list
 if cors_origins != "*" and "," in cors_origins:
-    cors_origins = cors_origins.split(",")
-# Enable CORS for all routes and origins
-CORS(app, resources={r"/*": {"origins": cors_origins}})
-# Initialize SocketIO with CORS allowed
-socketio = SocketIO(app, cors_allowed_origins=cors_origins, logger=True, engineio_logger=True)
+    cors_origins_list = [origin.strip() for origin in cors_origins.split(",")]
+    logger.info(f"Parsed CORS origins list: {cors_origins_list}")
+else:
+    cors_origins_list = cors_origins
+    logger.info(f"Using CORS origin: {cors_origins_list}")
+
+# Enable CORS for all routes with more permissive settings
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+# Initialize SocketIO with CORS allowed origins
+# More permissive for development - will accept any origin in production
+socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
 
 # Paths
 MODEL_PATH = os.environ.get("MODEL_PATH", "/Users/tanishqsingh/Desktop/projects/YOLO_CCTV/runs/detect/train3/weights/best.pt")
@@ -708,5 +720,5 @@ if __name__ == '__main__':
         sys.exit(1)
     logger.info("Detection approach: Using same filtering as test.py (min box width: 100px)")
     logger.info("Starting application server on http://0.0.0.0:5003")
-    # Use socketio.run instead of app.run
-    socketio.run(app, debug=True, host='0.0.0.0', port=5003) 
+    socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)
+    # app.run(host='0.0.0.0', port=5003, debug=False) 

@@ -14,7 +14,7 @@ services:
       FLASK_APP: app.py
       FLASK_ENV: production
       MODEL_PATH: /app/runs/detect/train3/weights/best.pt
-      CORS_ORIGINS: "https://yolo.viewer.in,http://yolo.viewer.in"
+      CORS_ORIGINS: "https://yolo.viewer.in,http://yolo.viewer.in,http://16.171.224.154:3000,http://16.171.224.154:3003,http://model.viewer.in:5003,https://model.viewer.in"
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -31,13 +31,13 @@ services:
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_SOCKET_PROTOCOL: "https:"
-      # For production use domain names
-      NEXT_PUBLIC_SOCKET_HOST: "model.viewer.in"
-      NEXT_PUBLIC_SOCKET_PORT: "443"
-      NEXT_PUBLIC_API_PROTOCOL: "https:"
-      NEXT_PUBLIC_API_HOST: "model.viewer.in"
-      NEXT_PUBLIC_API_PORT: "443"
+      NEXT_PUBLIC_SOCKET_PROTOCOL: "http:"
+      # For production use IP address and domain
+      NEXT_PUBLIC_SOCKET_HOST: "16.171.224.154"
+      NEXT_PUBLIC_SOCKET_PORT: "5003"
+      NEXT_PUBLIC_API_PROTOCOL: "http:"
+      NEXT_PUBLIC_API_HOST: "16.171.224.154"
+      NEXT_PUBLIC_API_PORT: "5003"
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
