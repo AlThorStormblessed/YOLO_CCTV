@@ -12,7 +12,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: [],
+    serverExternalPackages: [],
   },
 }
 
