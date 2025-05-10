@@ -6,8 +6,8 @@ echo "Starting deployment..."
 # Check if we're in production mode with domains
 if [ "$1" == "prod" ] || [ "$1" == "production" ]; then
   echo "Running in PRODUCTION mode with domain names"
-  FRONTEND_DOMAIN="yolo.viewer.in"
-  BACKEND_DOMAIN="model.viewer.in"
+  FRONTEND_DOMAIN="yolo.viewr.in"
+  BACKEND_DOMAIN="model.viewr.in"
   
   # Use HTTPS for production
   FRONTEND_URL="https://$FRONTEND_DOMAIN"
@@ -15,14 +15,14 @@ if [ "$1" == "prod" ] || [ "$1" == "production" ]; then
   
   # Update docker-compose.yml for production
   sed -i.bak "s/NEXT_PUBLIC_SOCKET_PROTOCOL: \".*\"/NEXT_PUBLIC_SOCKET_PROTOCOL: \"https:\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_SOCKET_HOST: \".*\"/NEXT_PUBLIC_SOCKET_HOST: \"model.viewer.in\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_SOCKET_HOST: \".*\"/NEXT_PUBLIC_SOCKET_HOST: \"model.viewr.in\"/" docker-compose.yml
   sed -i.bak "s/NEXT_PUBLIC_SOCKET_PORT: \".*\"/NEXT_PUBLIC_SOCKET_PORT: \"\"/" docker-compose.yml
   sed -i.bak "s/NEXT_PUBLIC_API_PROTOCOL: \".*\"/NEXT_PUBLIC_API_PROTOCOL: \"https:\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_API_HOST: \".*\"/NEXT_PUBLIC_API_HOST: \"model.viewer.in\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_API_HOST: \".*\"/NEXT_PUBLIC_API_HOST: \"model.viewr.in\"/" docker-compose.yml
   sed -i.bak "s/NEXT_PUBLIC_API_PORT: \".*\"/NEXT_PUBLIC_API_PORT: \"\"/" docker-compose.yml
   
   # Update CORS settings for production
-  CORS_ORIGINS="\"https://yolo.viewer.in,http://yolo.viewer.in,http://localhost:5003,https://model.viewer.in,http://model.viewer.in\""
+  CORS_ORIGINS="\"https://yolo.viewr.in,http://yolo.viewr.in,http://localhost:5003,https://model.viewr.in,http://model.viewr.in\""
   sed -i.bak "s/CORS_ORIGINS: \".*\"/CORS_ORIGINS: $CORS_ORIGINS/" docker-compose.yml
 else
   # For development/testing using localhost
