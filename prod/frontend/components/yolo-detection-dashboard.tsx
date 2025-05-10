@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { ConnectionStatus } from "@/components/connection-status";
 import { LogsViewer } from "@/components/logs-viewer";
-import { config } from "@/lib/config";
+import { config } from "../lib/config";
 
 // Types
 export interface LogEntry {
