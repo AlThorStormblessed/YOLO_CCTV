@@ -33,7 +33,7 @@ Start the Flask server:
 Open your web browser and navigate to:
 
 ```
-http://localhost:5001
+http://localhost:5002
 ```
 
 ## Step 5: Connect to a Stream
@@ -77,7 +77,7 @@ If stream processing starts but no logs appear:
 
 If you see errors in the browser console (F12):
 
-1. Make sure you're accessing the application via http://localhost:5001
+1. Make sure you're accessing the application via http://localhost:5002
 2. Check for any Socket.IO or network-related errors
 3. Try using a different browser if issues persist
 

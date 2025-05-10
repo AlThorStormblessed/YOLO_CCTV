@@ -19,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-DEFAULT_PORT = 5001
+DEFAULT_PORT = 5002
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_RTSP_URL = "rtsp://admin123:admin123@103.100.219.14:8555/11"
 MODEL_PATH = "../runs/detect/train3/weights/best.pt"

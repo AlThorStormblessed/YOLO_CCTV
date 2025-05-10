@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: yolo-backend
     ports:
-      - "5001:5001"
+      - "5002:5002"
     volumes:
       - ./runs:/app/runs # Mount YOLO model directory
     environment:

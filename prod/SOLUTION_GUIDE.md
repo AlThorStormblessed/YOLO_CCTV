@@ -163,7 +163,7 @@ Where:
 **Problem**: Socket.IO fails to connect or frequently disconnects
 
 **Solutions**:
-- Ensure you're accessing the application via http://localhost:5001 and not directly opening the HTML file
+- Ensure you're accessing the application via http://localhost:5002 and not directly opening the HTML file
 - Check browser console for specific connection errors
 - Try using a different web browser
 - Verify no firewall or network policy is blocking WebSocket connections
