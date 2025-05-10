@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: yolo-backend
     ports:
-      - "5002:5002"
+      - "5003:5003"
     volumes:
       - ./runs:/app/runs # Mount YOLO model directory
     environment:
@@ -30,8 +30,8 @@ services:
       NEXT_PUBLIC_SOCKET_PROTOCOL: "http:"
       # For Docker service-to-service communication
       NEXT_PUBLIC_SOCKET_HOST: "backend"
-      NEXT_PUBLIC_SOCKET_PORT: "5001"
+      NEXT_PUBLIC_SOCKET_PORT: "5003"
       NEXT_PUBLIC_API_PROTOCOL: "http:"
       NEXT_PUBLIC_API_HOST: "backend"
-      NEXT_PUBLIC_API_PORT: "5001"
+      NEXT_PUBLIC_API_PORT: "5003"
     restart: unless-stopped

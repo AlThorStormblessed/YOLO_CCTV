@@ -707,6 +707,6 @@ if __name__ == '__main__':
         logger.error("Please update the MODEL_PATH variable in app.py to point to your YOLO model file.")
         sys.exit(1)
     logger.info("Detection approach: Using same filtering as test.py (min box width: 100px)")
-    logger.info("Starting application server on http://0.0.0.0:5001")
+    logger.info("Starting application server on http://0.0.0.0:5003")
     # Use socketio.run instead of app.run
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001) 
+    socketio.run(app, debug=True, host='0.0.0.0', port=5003) 

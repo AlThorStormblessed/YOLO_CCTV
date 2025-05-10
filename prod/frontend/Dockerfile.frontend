@@ -21,10 +21,10 @@ RUN echo '{"paths":{"@/*":["./*"]}}' > /app/node_modules/.next/paths-manifest.js
 # Set environment variables for the build
 ENV NEXT_PUBLIC_SOCKET_PROTOCOL=http:
 ENV NEXT_PUBLIC_SOCKET_HOST=backend
-ENV NEXT_PUBLIC_SOCKET_PORT=5002
+ENV NEXT_PUBLIC_SOCKET_PORT=5003
 ENV NEXT_PUBLIC_API_PROTOCOL=http:
 ENV NEXT_PUBLIC_API_HOST=backend
-ENV NEXT_PUBLIC_API_PORT=5002
+ENV NEXT_PUBLIC_API_PORT=5003
 
 # Build with more memory
 ENV NODE_OPTIONS="--max-old-space-size=4096"

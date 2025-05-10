@@ -34,7 +34,7 @@ python run.py start
 
 Optional parameters:
 - `--host`: Host to bind the server to (default: 0.0.0.0)
-- `--port`: Port to run the server on (default: 5002)
+- `--port`: Port to run the server on (default: 5003)
 - `--debug`: Run in debug mode
 
 ### Test RTSP Connection:
@@ -57,7 +57,7 @@ python run.py test
 ## Usage
 
 1. Start the application using the run script
-2. Open your browser to `http://localhost:5002`
+2. Open your browser to `http://localhost:5003`
 3. Enter an RTSP URL or video URL
 4. Click "Start Processing"
 5. View the detection logs in real-time

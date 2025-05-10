@@ -21,10 +21,10 @@ export const config = {
   // Socket.IO server configuration
   SOCKET_PROTOCOL: process.env.NEXT_PUBLIC_SOCKET_PROTOCOL || "http:",
   SOCKET_HOST: adjustHostForBrowser(process.env.NEXT_PUBLIC_SOCKET_HOST || getWindowHostname() || "localhost"),
-  SOCKET_PORT: process.env.NEXT_PUBLIC_SOCKET_PORT || "5002",
+  SOCKET_PORT: process.env.NEXT_PUBLIC_SOCKET_PORT || "5003",
 
   // API server configuration
   API_PROTOCOL: process.env.NEXT_PUBLIC_API_PROTOCOL || "http:",
   API_HOST: adjustHostForBrowser(process.env.NEXT_PUBLIC_API_HOST || getWindowHostname() || "localhost"),
-  API_PORT: process.env.NEXT_PUBLIC_API_PORT || "5002",
+  API_PORT: process.env.NEXT_PUBLIC_API_PORT || "5003",
 }

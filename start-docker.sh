@@ -15,7 +15,7 @@ docker-compose up --build -d
 
 echo "Services started!"
 echo "Frontend: http://$HOST:3000"
-echo "Backend: http://$HOST:5002"
+echo "Backend: http://$HOST:5003"
 echo ""
 echo "To view logs, run: docker-compose logs -f"
 echo "To stop services, run: docker-compose down" 
