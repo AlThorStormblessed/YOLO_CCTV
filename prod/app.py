@@ -45,12 +45,12 @@ else:
     cors_origins_list = cors_origins
     logger.info(f"Using CORS origin: {cors_origins_list}")
 
-# Enable CORS for all routes with more permissive settings
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+# Enable CORS for all routes with specific origins from environment
+CORS(app, resources={r"/*": {"origins": cors_origins_list}}, supports_credentials=True)
 
 # Initialize SocketIO with CORS allowed origins
-# More permissive for development - will accept any origin in production
-socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
+# Use the same CORS origins for Socket.IO
+socketio = SocketIO(app, cors_allowed_origins=cors_origins_list, logger=True, engineio_logger=True)
 
 # Paths
 MODEL_PATH = os.environ.get("MODEL_PATH", "/Users/tanishqsingh/Desktop/projects/YOLO_CCTV/runs/detect/train3/weights/best.pt")

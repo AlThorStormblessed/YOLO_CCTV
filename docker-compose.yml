@@ -14,7 +14,7 @@ services:
       FLASK_APP: app.py
       FLASK_ENV: production
       MODEL_PATH: /app/runs/detect/train3/weights/best.pt
-      CORS_ORIGINS: ""
+      CORS_ORIGINS: "https://yolo.viewr.in,http://yolo.viewr.in,https://viewr.in,http://viewr.in,http://localhost:3000"
     restart: unless-stopped
 
   frontend:
