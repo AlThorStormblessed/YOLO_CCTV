@@ -14,11 +14,11 @@ services:
       FLASK_APP: app.py
       FLASK_ENV: production
       MODEL_PATH: /app/runs/detect/train3/weights/best.pt
-      CORS_ORIGINS: "https://yolo.viewer.in,http://yolo.viewer.in,http://localhost:5003,https://model.viewer.in,http://model.viewer.in"
+      CORS_ORIGINS: "https://yolo.viewr.in,http://yolo.viewr.in,http://localhost:5003,https://model.viewr.in,http://model.viewr.in"
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`model.viewer.in`)"
+      - "traefik.http.routers.backend.rule=Host(`model.viewr.in`)"
       - "traefik.http.services.backend.loadbalancer.server.port=5003"
 
   frontend:
@@ -41,5 +41,5 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`yolo.viewer.in`)"
+      - "traefik.http.routers.frontend.rule=Host(`yolo.viewr.in`)"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
