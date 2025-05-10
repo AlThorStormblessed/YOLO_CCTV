@@ -85,7 +85,7 @@ export function YoloDetectionDashboard() {
     setConnectionStatus("connecting");
 
     const socketUrl =
-      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5003";
+      process.env.NEXT_PUBLIC_SOCKET_URL || "https://model.viewer.in";
     console.log(`Connecting to Socket.IO at ${socketUrl}`);
 
     try {
