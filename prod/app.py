@@ -711,6 +711,54 @@ def handle_connect():
 def handle_disconnect():
     logger.info(f"Client disconnected: {request.sid}")
 
+# Helper function to add CORS headers to responses
+def add_cors_headers(response):
+    origin = request.headers.get('Origin')
+    logger.info(f"Request Origin: {origin}")
+    
+    # Always set Access-Control-Allow-Origin to the request origin if it's in the allowed list
+    if origin and (cors_origins_list == "*" or origin in cors_origins_list):
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        # If no matching origin found or no origin header, set to the first allowed origin
+        if isinstance(cors_origins_list, list) and len(cors_origins_list) > 0:
+            response.headers['Access-Control-Allow-Origin'] = cors_origins_list[0]
+        else:
+            response.headers['Access-Control-Allow-Origin'] = '*'
+    
+    # Set other CORS headers
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Max-Age'] = '3600'  # Cache preflight response for 1 hour
+    
+    logger.info(f"Response CORS headers: {dict(response.headers)}")
+    return response
+
+# Add CORS headers to all responses
+@app.after_request
+def after_request(response):
+    return add_cors_headers(response)
+
+# Handle OPTIONS requests for API routes explicitly
+@app.route('/api/start_stream', methods=['OPTIONS'])
+@app.route('/api/stop_stream/<stream_id>', methods=['OPTIONS'])
+@app.route('/api/stream_status/<stream_id>', methods=['OPTIONS'])
+@app.route('/api/active_streams', methods=['OPTIONS'])
+@app.route('/api/logs/<stream_id>', methods=['OPTIONS'])
+def api_options_handler(stream_id=None):
+    logger.info(f"Handling OPTIONS request for API endpoint: {request.path}")
+    response = app.make_default_options_response()
+    return add_cors_headers(response)
+
+# Handle OPTIONS requests for any other route
+@app.route('/', methods=['OPTIONS'])
+@app.route('/<path:path>', methods=['OPTIONS'])
+def options_handler(path=""):
+    logger.info(f"Handling OPTIONS request for path: {path}")
+    response = app.make_default_options_response()
+    return add_cors_headers(response)
+
 if __name__ == '__main__':
     logger.info("===== YOLO CCTV Detection Application =====")
     logger.info(f"Using YOLO model: {MODEL_PATH}")
