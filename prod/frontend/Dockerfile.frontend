@@ -17,9 +17,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Ensure the lib directory exists and create a custom utils.ts file
-RUN mkdir -p lib
-RUN echo 'import { clsx } from "clsx";\nimport { twMerge } from "tailwind-merge";\n\nexport function cn(...inputs) {\n  return twMerge(clsx(inputs));\n}' > lib/utils.ts
+# Ensure required dependencies are installed
+RUN npm install -g pnpm
+RUN pnpm install clsx tailwind-merge
 
 # Set environment variables for the build
 ENV NEXT_PUBLIC_SOCKET_PROTOCOL=http:
@@ -30,8 +30,7 @@ ENV NEXT_PUBLIC_API_HOST=backend
 ENV NEXT_PUBLIC_API_PORT=5001
 
 # Build the application
-RUN npm install -g pnpm
-RUN pnpm build
+RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm build
 
 # Production image, copy all the files and run next
 FROM base AS runner
