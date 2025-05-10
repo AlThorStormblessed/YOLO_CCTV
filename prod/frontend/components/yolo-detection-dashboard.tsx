@@ -39,9 +39,9 @@ export interface LogEntry {
   raw_text?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://model.viewer.in";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://model.viewr.in";
 const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || "https://model.viewer.in";
+  process.env.NEXT_PUBLIC_SOCKET_URL || "https://model.viewr.in";
 
 export function YoloDetectionDashboard() {
   // State
