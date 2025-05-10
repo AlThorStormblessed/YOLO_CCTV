@@ -1,13 +1,10 @@
 #!/bin/bash
 
-echo "Stopping any running containers..."
-docker-compose down
-
-echo "Rebuilding containers with new configuration..."
-docker-compose build
-
-echo "Starting containers..."
-docker-compose up -d
-
-echo "Containers started in background. Check logs with:"
-echo "docker-compose logs -f" 
+# Check if we're in production mode with domains
+if [ "$1" == "prod" ] || [ "$1" == "production" ]; then
+  echo "Restarting in PRODUCTION mode..."
+  ./start-docker.sh prod
+else
+  echo "Restarting in DEVELOPMENT mode..."
+  ./start-docker.sh
+fi 

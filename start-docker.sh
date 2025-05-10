@@ -1,54 +1,50 @@
 #!/bin/bash
 
 # Production deployment script for YOLO CCTV Application
-echo "Starting production deployment..."
+echo "Starting deployment..."
 
 # Check if we're in production mode with domains
 if [ "$1" == "prod" ] || [ "$1" == "production" ]; then
-  echo "Running in PRODUCTION mode"
+  echo "Running in PRODUCTION mode with domain names"
   FRONTEND_DOMAIN="yolo.viewer.in"
   BACKEND_DOMAIN="model.viewer.in"
   
-  # The actual server public IP address
-  SERVER_IP="16.171.224.154"
+  # Use HTTPS for production
+  FRONTEND_URL="https://$FRONTEND_DOMAIN"
+  BACKEND_URL="https://$BACKEND_DOMAIN"
   
-  # Use HTTP for now since HTTPS is not fully configured
-  FRONTEND_URL="http://$SERVER_IP:3000"
-  BACKEND_URL="http://$SERVER_IP:5003"
+  # Update docker-compose.yml for production
+  sed -i.bak "s/NEXT_PUBLIC_SOCKET_PROTOCOL: \".*\"/NEXT_PUBLIC_SOCKET_PROTOCOL: \"https:\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_SOCKET_HOST: \".*\"/NEXT_PUBLIC_SOCKET_HOST: \"model.viewer.in\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_SOCKET_PORT: \".*\"/NEXT_PUBLIC_SOCKET_PORT: \"\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_API_PROTOCOL: \".*\"/NEXT_PUBLIC_API_PROTOCOL: \"https:\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_API_HOST: \".*\"/NEXT_PUBLIC_API_HOST: \"model.viewer.in\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_API_PORT: \".*\"/NEXT_PUBLIC_API_PORT: \"\"/" docker-compose.yml
   
-  # Update docker-compose.yml for production with IP address for direct communication
-  sed -i.bak "s/NEXT_PUBLIC_SOCKET_HOST: \".*\"/NEXT_PUBLIC_SOCKET_HOST: \"$SERVER_IP\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_API_HOST: \".*\"/NEXT_PUBLIC_API_HOST: \"$SERVER_IP\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_SOCKET_PROTOCOL: \".*\"/NEXT_PUBLIC_SOCKET_PROTOCOL: \"http:\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_API_PROTOCOL: \".*\"/NEXT_PUBLIC_API_PROTOCOL: \"http:\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_SOCKET_PORT: \".*\"/NEXT_PUBLIC_SOCKET_PORT: \"5003\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_API_PORT: \".*\"/NEXT_PUBLIC_API_PORT: \"5003\"/" docker-compose.yml
-  
-  # Update CORS settings to include all possible access URLs
-  CORS_ORIGINS="\"https://yolo.viewer.in,http://yolo.viewer.in,http://$SERVER_IP:3000,http://$SERVER_IP:3003,http://model.viewer.in:5003,https://model.viewer.in\""
+  # Update CORS settings for production
+  CORS_ORIGINS="\"https://yolo.viewer.in,http://yolo.viewer.in,http://localhost:5003,https://model.viewer.in,http://model.viewer.in\""
   sed -i.bak "s/CORS_ORIGINS: \".*\"/CORS_ORIGINS: $CORS_ORIGINS/" docker-compose.yml
 else
-  # For development/testing using IP address
-  export HOST=$(hostname -I | cut -d' ' -f1)
-  echo "Running in DEVELOPMENT mode using IP address: $HOST"
+  # For development/testing using localhost
+  echo "Running in DEVELOPMENT mode using localhost"
   
-  FRONTEND_DOMAIN="$HOST"
-  BACKEND_DOMAIN="$HOST"
+  FRONTEND_DOMAIN="localhost"
+  BACKEND_DOMAIN="localhost"
   
   # Use HTTP for development
   FRONTEND_URL="http://$FRONTEND_DOMAIN:3000"
   BACKEND_URL="http://$BACKEND_DOMAIN:5003"
   
-  # Update docker-compose.yml with the local IP
-  sed -i.bak "s/NEXT_PUBLIC_SOCKET_HOST: \".*\"/NEXT_PUBLIC_SOCKET_HOST: \"$HOST\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_API_HOST: \".*\"/NEXT_PUBLIC_API_HOST: \"$HOST\"/" docker-compose.yml
+  # Update docker-compose.yml with localhost settings
   sed -i.bak "s/NEXT_PUBLIC_SOCKET_PROTOCOL: \".*\"/NEXT_PUBLIC_SOCKET_PROTOCOL: \"http:\"/" docker-compose.yml
-  sed -i.bak "s/NEXT_PUBLIC_API_PROTOCOL: \".*\"/NEXT_PUBLIC_API_PROTOCOL: \"http:\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_SOCKET_HOST: \".*\"/NEXT_PUBLIC_SOCKET_HOST: \"localhost\"/" docker-compose.yml
   sed -i.bak "s/NEXT_PUBLIC_SOCKET_PORT: \".*\"/NEXT_PUBLIC_SOCKET_PORT: \"5003\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_API_PROTOCOL: \".*\"/NEXT_PUBLIC_API_PROTOCOL: \"http:\"/" docker-compose.yml
+  sed -i.bak "s/NEXT_PUBLIC_API_HOST: \".*\"/NEXT_PUBLIC_API_HOST: \"localhost\"/" docker-compose.yml
   sed -i.bak "s/NEXT_PUBLIC_API_PORT: \".*\"/NEXT_PUBLIC_API_PORT: \"5003\"/" docker-compose.yml
   
   # Update CORS settings for development
-  CORS_ORIGINS="\"http://$HOST:3000\""
+  CORS_ORIGINS="\"http://localhost:3000,http://localhost:5003\""
   sed -i.bak "s/CORS_ORIGINS: \".*\"/CORS_ORIGINS: $CORS_ORIGINS/" docker-compose.yml
 fi
 

@@ -720,5 +720,5 @@ if __name__ == '__main__':
         sys.exit(1)
     logger.info("Detection approach: Using same filtering as test.py (min box width: 100px)")
     logger.info("Starting application server on http://0.0.0.0:5003")
-    socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=5003)
     # app.run(host='0.0.0.0', port=5003, debug=False) 
