@@ -14,19 +14,34 @@ from ultralytics import YOLO
 import sys
 import urllib.parse
 import numpy as np
+import torch
+
+# Fix for PyTorch 2.6+ model loading
+# Add ultralytics model classes to safe globals for deserialization
+try:
+    from torch.serialization import add_safe_globals
+    add_safe_globals(["ultralytics.nn.tasks.DetectionModel"])
+    print("Added ultralytics.nn.tasks.DetectionModel to PyTorch safe globals")
+except ImportError:
+    print("PyTorch version doesn't have add_safe_globals, will use weights_only=False instead")
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+# Get CORS origins from environment or use default
+cors_origins = os.environ.get("CORS_ORIGINS", "*")
+# If CORS_ORIGINS is a comma-separated list, split it into a list
+if cors_origins != "*" and "," in cors_origins:
+    cors_origins = cors_origins.split(",")
 # Enable CORS for all routes and origins
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": cors_origins}})
 # Initialize SocketIO with CORS allowed
-socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
+socketio = SocketIO(app, cors_allowed_origins=cors_origins, logger=True, engineio_logger=True)
 
 # Paths
-MODEL_PATH = "/Users/tanishqsingh/Desktop/projects/YOLO_CCTV/runs/detect/train3/weights/best.pt"
+MODEL_PATH = os.environ.get("MODEL_PATH", "/Users/tanishqsingh/Desktop/projects/YOLO_CCTV/runs/detect/train3/weights/best.pt")
 
 # Global variables
 active_streams = {}
@@ -97,17 +112,46 @@ def process_stream(stream_id, url):
     # Load YOLO model
     try:
         logger.info(f"Loading YOLO model from {MODEL_PATH}")
-        # Load model the same way as in test.py
-        model = YOLO(MODEL_PATH)
+        # Handle PyTorch 2.6+ model loading with specific params
+        try:
+            # First try with safe_globals context manager if available
+            from torch.serialization import safe_globals
+            with safe_globals(["ultralytics.nn.tasks.DetectionModel"]):
+                model = YOLO(MODEL_PATH)
+                logger.info("Model loaded using safe_globals context manager")
+        except (ImportError, AttributeError):
+            try:
+                # Then try with weights_only=False
+                model = YOLO(MODEL_PATH, weights_only=False)
+                logger.info("Model loaded with weights_only=False")
+            except TypeError:
+                # Fallback to default YOLO loading
+                logger.info("Falling back to default YOLO loading")
+                model = YOLO(MODEL_PATH)
         
-        # Make sure the model is in inference mode
-        logger.info("Setting model to inference mode")
-        model.to('cpu')  # Use CPU for inference to be safe
-        model.eval()     # Set to evaluation mode
+        # In ultralytics 8.x, the model handling is different
+        # The model is already in inference mode, no need to call model.eval()
+        logger.info("Setting model to inference mode (CPU)")
+        # Set to CPU device if available
+        try:
+            model.to('cpu')  # Try to use CPU for inference
+            logger.info("Successfully set model to CPU")
+        except Exception as e:
+            logger.warning(f"Could not set model to CPU, using default device: {str(e)}")
         
         logger.info("YOLO model loaded successfully")
-        class_names = model.model.names
-        logger.info(f"Model has {len(class_names)} classes: {class_names}")
+        # Get class names from the model
+        try:
+            class_names = model.model.names
+            logger.info(f"Model has {len(class_names)} classes: {class_names}")
+        except AttributeError:
+            # For newer ultralytics versions
+            try:
+                class_names = model.names
+                logger.info(f"Model has {len(class_names)} classes (using model.names): {class_names}")
+            except AttributeError:
+                logger.warning("Could not get class names from model")
+                class_names = {0: 'unknown'}
         
         # Print all available class names with their indices
         for i, name in class_names.items():
@@ -525,7 +569,18 @@ def process_stream(stream_id, url):
 @app.route('/')
 def index():
     logger.info("Serving index page")
-    return render_template('index.html')
+    # Return a simple API response instead of rendering a template
+    return jsonify({
+        "status": "running",
+        "message": "YOLO CCTV Detection API is running",
+        "endpoints": {
+            "start_stream": "/api/start_stream",
+            "stop_stream": "/api/stop_stream/<stream_id>",
+            "stream_status": "/api/stream_status/<stream_id>",
+            "active_streams": "/api/active_streams",
+            "logs": "/api/logs/<stream_id>"
+        }
+    })
 
 @app.route('/api/start_stream', methods=['POST'])
 def start_stream():
@@ -654,4 +709,4 @@ if __name__ == '__main__':
     logger.info("Detection approach: Using same filtering as test.py (min box width: 100px)")
     logger.info("Starting application server on http://0.0.0.0:5001")
     # Use socketio.run instead of app.run
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True) 
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001) 

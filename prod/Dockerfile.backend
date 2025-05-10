@@ -1,0 +1,35 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies for OpenCV
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+
+# Install numpy first to ensure the correct version is used
+RUN pip install --no-cache-dir numpy==1.24.3
+# Then install the rest of the requirements
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code
+COPY app.py .
+COPY run.py .
+
+# Create directories for templates and static files
+RUN mkdir -p templates static
+
+# Set environment variables
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+ENV PYTHONUNBUFFERED=1
+
+# Expose the port
+EXPOSE 5001
+
+# Command to run the application
+CMD ["python", "app.py"] 

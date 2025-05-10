@@ -433,7 +433,7 @@ export function YoloDetectionDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-center md:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-center md:text-4xl dark:text-black">
           YOLO Object Detection Logs
         </h1>
         <p className="text-muted-foreground text-center">
