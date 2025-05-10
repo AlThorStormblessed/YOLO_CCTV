@@ -14,14 +14,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set environment variables for the build
-ENV NEXT_PUBLIC_SOCKET_PROTOCOL=http:
-ENV NEXT_PUBLIC_SOCKET_HOST=localhost
-ENV NEXT_PUBLIC_SOCKET_PORT=5003
-ENV NEXT_PUBLIC_API_PROTOCOL=http:
-ENV NEXT_PUBLIC_API_HOST=localhost
-ENV NEXT_PUBLIC_API_PORT=5003
-
 # Build with more memory
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN bun run build
@@ -48,4 +40,4 @@ USER appuser
 EXPOSE 3000
 
 # Command to run the application
-CMD sh -c "sed -i 's/backend:5003/localhost:5003/g' /app/.next/static/chunks/*.js && echo 'Fixed backend references in JavaScript files' && bun server.js"
+CMD sh -c "sed -i 's/backend:5003/model.viewer.in/g' /app/.next/static/chunks/*.js && sed -i 's/localhost:5003/model.viewer.in/g' /app/.next/static/chunks/*.js && echo 'Fixed backend references in JavaScript files to use model.viewer.in' && bun server.js"

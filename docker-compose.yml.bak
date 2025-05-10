@@ -6,7 +6,7 @@ services:
       context: ./prod
       dockerfile: Dockerfile.backend
     container_name: yolo-backend
-    ports:s
+    ports:
       - "5003:5003"
     volumes:
       - ./runs:/app/runs # Mount YOLO model directory
@@ -14,12 +14,8 @@ services:
       FLASK_APP: app.py
       FLASK_ENV: production
       MODEL_PATH: /app/runs/detect/train3/weights/best.pt
-      CORS_ORIGINS: "https://yolo.viewr.in,http://yolo.viewr.in,http://localhost:5003,https://model.viewr.in,http://model.viewr.in"
+      CORS_ORIGINS: ""
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`model.viewr.in`)"
-      - "traefik.http.services.backend.loadbalancer.server.port=5003"
 
   frontend:
     build:
@@ -31,15 +27,6 @@ services:
     depends_on:
       - backend
     environment:
-      # For production use
-      NEXT_PUBLIC_SOCKET_PROTOCOL: "http:"
-      NEXT_PUBLIC_SOCKET_HOST: "localhost"
-      NEXT_PUBLIC_SOCKET_PORT: "5003"
-      NEXT_PUBLIC_API_PROTOCOL: "http:"
-      NEXT_PUBLIC_API_HOST: "localhost"
-      NEXT_PUBLIC_API_PORT: "5003"
+      NEXT_PUBLIC_SOCKET_URL: ${SOCKET_URL}
+      NEXT_PUBLIC_API_URL: ${API_URL}
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`yolo.viewr.in`)"
-      - "traefik.http.services.frontend.loadbalancer.server.port=3000"

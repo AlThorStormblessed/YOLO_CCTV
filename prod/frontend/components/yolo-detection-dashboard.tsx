@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { ConnectionStatus } from "@/components/connection-status";
 import { LogsViewer } from "@/components/logs-viewer";
-import { config } from "../lib/config";
 
 // Types
 export interface LogEntry {
@@ -39,6 +38,10 @@ export interface LogEntry {
   };
   raw_text?: string;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://model.viewer.in";
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL || "https://model.viewer.in";
 
 export function YoloDetectionDashboard() {
   // State
@@ -81,7 +84,8 @@ export function YoloDetectionDashboard() {
 
     setConnectionStatus("connecting");
 
-    const socketUrl = `${config.SOCKET_PROTOCOL}//${config.SOCKET_HOST}:${config.SOCKET_PORT}`;
+    const socketUrl =
+      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5003";
     console.log(`Connecting to Socket.IO at ${socketUrl}`);
 
     try {
@@ -305,7 +309,7 @@ export function YoloDetectionDashboard() {
       // Release any previous stream ID
       setCurrentStreamId(null);
 
-      const apiUrl = `${config.API_PROTOCOL}//${config.API_HOST}:${config.API_PORT}/api/start_stream`;
+      const apiUrl = `${API_URL}/api/start_stream`;
       console.log(`Sending request to: ${apiUrl}`);
 
       const response = await fetch(apiUrl, {
@@ -361,7 +365,7 @@ export function YoloDetectionDashboard() {
     try {
       showStatus("Stopping stream...", "warning");
 
-      const apiUrl = `${config.API_PROTOCOL}//${config.API_HOST}:${config.API_PORT}/api/stop_stream/${currentStreamId}`;
+      const apiUrl = `${API_URL}/api/stop_stream/${currentStreamId}`;
 
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -464,8 +468,7 @@ export function YoloDetectionDashboard() {
               </div>
 
               <div className="text-sm text-muted-foreground">
-                Socket URL:{" "}
-                {`${config.SOCKET_PROTOCOL}//${config.SOCKET_HOST}:${config.SOCKET_PORT}`}
+                Socket URL: {SOCKET_URL}
               </div>
 
               <Button
