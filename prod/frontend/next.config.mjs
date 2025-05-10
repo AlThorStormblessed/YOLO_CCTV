@@ -11,9 +11,6 @@ const nextConfig = {
   },
   output: 'standalone',
   reactStrictMode: true,
-  experimental: {
-    serverExternalPackages: [],
-  },
 }
 
 export default nextConfig

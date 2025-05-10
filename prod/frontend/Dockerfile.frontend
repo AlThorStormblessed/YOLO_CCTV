@@ -17,6 +17,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Ensure the lib directory exists and create a custom utils.ts file
+RUN mkdir -p lib
+RUN echo 'import { clsx } from "clsx";\nimport { twMerge } from "tailwind-merge";\n\nexport function cn(...inputs) {\n  return twMerge(clsx(inputs));\n}' > lib/utils.ts
+
 # Set environment variables for the build
 ENV NEXT_PUBLIC_SOCKET_PROTOCOL=http:
 ENV NEXT_PUBLIC_SOCKET_HOST=backend
