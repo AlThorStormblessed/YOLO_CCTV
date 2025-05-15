@@ -13,3 +13,8 @@ Training is done by running the command `yolo detect train model=yolov8n.pt data
 ## Testing
 
 Testing of a particular run can be done on random images by running test.py, changing weights. Best weights so far are present in train3 and train4. 
+
+
+## Deepface model
+
+The cell with class FaceClassifier(nn.Module) etc should be run to test the model on input frame.
